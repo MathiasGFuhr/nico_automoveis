@@ -91,11 +91,11 @@ export default function VerVenda() {
         clientName: sale.client.name,
         clientEmail: sale.client.email,
         clientPhone: sale.client.phone,
-        clientCpf: sale.client.cpf || 'Não informado',
-        vehicleBrand: sale.vehicle.brands.name,
+        clientCpf: (sale.client as any).cpf || 'Não informado',
+        vehicleBrand: sale.vehicle.brand,
         vehicleModel: sale.vehicle.model,
         vehicleYear: sale.vehicle.year,
-        vehiclePrice: sale.price,
+        vehiclePrice: sale.total_amount,
         paymentMethod: sale.payment_method,
         saleDate: sale.sale_date,
         sellerName: sale.seller.name,
@@ -140,7 +140,7 @@ export default function VerVenda() {
     <div className="flex min-h-screen bg-secondary-50">
       <AdminSidebar 
         isCollapsed={sidebarCollapsed}
-        setIsCollapsed={setSidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
@@ -241,7 +241,7 @@ export default function VerVenda() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-secondary-600">CPF</label>
-                  <p className="text-lg text-secondary-900">{sale.client.cpf || 'Não informado'}</p>
+                  <p className="text-lg text-secondary-900">{(sale.client as any).cpf || 'Não informado'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-secondary-600">Email</label>
@@ -281,7 +281,7 @@ export default function VerVenda() {
                 <div>
                   <label className="text-sm font-medium text-secondary-600">Marca/Modelo</label>
                   <p className="text-lg font-semibold text-secondary-900">
-                    {sale.vehicle.brands.name} {sale.vehicle.model}
+                    {sale.vehicle.brand} {sale.vehicle.model}
                   </p>
                 </div>
                 <div>
@@ -290,11 +290,11 @@ export default function VerVenda() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-secondary-600">Combustível</label>
-                  <p className="text-lg text-secondary-900">{sale.vehicle.fuel_type}</p>
+                  <p className="text-lg text-secondary-900">{(sale.vehicle as any).fuel_type || 'Não informado'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-secondary-600">Transmissão</label>
-                  <p className="text-lg text-secondary-900">{sale.vehicle.transmission}</p>
+                  <p className="text-lg text-secondary-900">{(sale.vehicle as any).transmission || 'Não informado'}</p>
                 </div>
               </div>
             </motion.div>
@@ -320,7 +320,7 @@ export default function VerVenda() {
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                   <label className="text-sm font-medium text-green-700">Valor da Venda</label>
                   <p className="text-3xl font-bold text-green-700">
-                    {sale.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {sale.total_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
                 <div>

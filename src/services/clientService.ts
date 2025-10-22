@@ -2,15 +2,26 @@ import { createClient } from '@/lib/supabase-client'
 
 export interface ClientData {
   name: string
-  email: string
-  phone: string
-  cpf: string
-  city: string
-  state: string
-  client_type: 'buyer' | 'seller' | 'prospect'
-  status?: 'active' | 'inactive' | 'interested'
+  email: string | null
+  phone: string | null
+  cpf: string | null
+  city: string | null
+  state: string | null
+  address?: string | null
+  zip_code?: string | null
+  client_type: string
+  status: string
+  notes?: string | null
+  birth_date?: string | null
+  rg?: string | null
+  profession?: string | null
+  income?: string | null
+  marital_status?: string | null
+  has_children?: boolean
+  children_count?: number | null
+  preferred_contact?: string | null
+  interests?: string[]
   rating?: number
-  notes?: string
 }
 
 export class ClientService {

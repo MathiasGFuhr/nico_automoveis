@@ -28,6 +28,7 @@ export default function GerenciarDestaque() {
     brand: string
     year: number
     price: number
+    mileage: number
     image?: string
     featured: boolean
   }>>([])

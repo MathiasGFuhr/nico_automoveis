@@ -139,7 +139,7 @@ export default function VeiculosVendidos() {
         <div className="hidden lg:block">
           <AdminSidebar 
             isCollapsed={sidebarCollapsed} 
-            setIsCollapsed={setSidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
         </div>
         <div className={`flex-1 flex items-center justify-center ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
@@ -344,7 +344,7 @@ export default function VeiculosVendidos() {
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Combustível</p>
-                      <p className="font-semibold text-gray-900">{vehicle.fuelType}</p>
+                      <p className="font-semibold text-gray-900">{vehicle.fuel}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Transmissão</p>
@@ -356,7 +356,7 @@ export default function VeiculosVendidos() {
                   <div className="flex items-center space-x-2 text-gray-600 mb-4">
                     <Calendar className="w-4 h-4" />
                     <span className="text-sm">
-                      Vendido em {new Date(vehicle.createdAt || Date.now()).toLocaleDateString('pt-BR')}
+                      Vendido em {new Date(vehicle.created_at || Date.now()).toLocaleDateString('pt-BR')}
                     </span>
                   </div>
 

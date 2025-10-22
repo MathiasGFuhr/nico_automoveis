@@ -159,7 +159,7 @@ export default function EditarVenda() {
         payment_method: formData.paymentMethod,
         status: formData.status,
         sale_date: formData.saleDate,
-        notes: formData.notes || null
+        notes: formData.notes || undefined
       }
 
       await SalesService.updateSale(saleId, saleData)
@@ -191,7 +191,7 @@ export default function EditarVenda() {
     <div className="flex min-h-screen bg-secondary-50">
       <AdminSidebar 
         isCollapsed={sidebarCollapsed}
-        setIsCollapsed={setSidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>

@@ -65,8 +65,8 @@ const vehicleData: Vehicle = {
     comprimento: '4.630 mm',
     largura: '1.780 mm',
     altura: '1.435 mm',
-    entreEixos: '2.700 mm',
-    portaMalas: '470 litros'
+    entre_eixos: '2.700 mm',
+    porta_malas: '470 litros'
   },
   seller: {
     name: 'Nico Automóveis',
@@ -88,7 +88,7 @@ export default async function VehicleDetailsPage({ params }: PageProps) {
   console.log('🔍 Buscando veículo com ID:', id)
   
   // Buscar veículo real do Supabase
-  let vehicle: Vehicle
+  let vehicle: Vehicle | null
   try {
     vehicle = await VehicleService.getVehicleById(id)
     console.log('✅ Veículo encontrado:', vehicle)

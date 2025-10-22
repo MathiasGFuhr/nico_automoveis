@@ -319,7 +319,7 @@ export class VehicleService {
   }
 
   // Atualizar status do veículo
-  static async updateVehicleStatus(id: string, status: 'available' | 'reserved' | 'sold' | 'maintenance') {
+  static async updateVehicleStatus(id: string, status: 'available' | 'reserved' | 'sold' | 'maintenance' | 'trade') {
     const supabase = createClient()
     
     const { data, error } = await supabase
@@ -454,20 +454,6 @@ export class VehicleService {
     return data
   }
 
-  // Atualizar status do veículo (para destaques)
-  static async updateVehicleStatus(id: string, status: string) {
-    const supabase = createClient()
-    
-    const { data, error } = await supabase
-      .from('vehicles')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
-  }
 
   // Criar veículo em troca
   static async createTradeVehicle(tradeData: {

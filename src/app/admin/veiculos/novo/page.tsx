@@ -74,7 +74,7 @@ export default function NovoVeiculo() {
     router.push('/admin/login')
   }
 
-  const handleInputChange = (field: string, value: string | string[]) => {
+  const handleInputChange = (field: string, value: string | string[] | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value

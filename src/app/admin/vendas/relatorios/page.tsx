@@ -123,16 +123,16 @@ export default function RelatoriosVendas() {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5)
 
-  const topVehiclesArray = filteredSales
+  const topVehiclesArray = Object.values(filteredSales
     .reduce((acc, sale) => {
-      const key = `${sale.vehicle.brands.name} ${sale.vehicle.model}`
+      const key = `${sale.vehicle.brand} ${sale.vehicle.model}`
       if (!acc[key]) {
-        acc[key] = { brand: sale.vehicle.brands.name, model: sale.vehicle.model, sales: 0, revenue: 0 }
+        acc[key] = { brand: sale.vehicle.brand, model: sale.vehicle.model, sales: 0, revenue: 0 }
       }
       acc[key].sales += 1
       acc[key].revenue += sale.price
       return acc
-    }, {} as Record<string, { brand: string, model: string, sales: number, revenue: number }>)
+    }, {} as Record<string, { brand: string, model: string, sales: number, revenue: number }>))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5)
 

@@ -174,7 +174,8 @@ export default function NovaVenda() {
         cpf: newClientData.cpf,
         city: newClientData.city,
         state: newClientData.state,
-        client_type: 'buyer' as const
+        client_type: 'buyer' as const,
+        status: 'active' as const
       }
 
       const newClient = await ClientService.addClient(clientData)
