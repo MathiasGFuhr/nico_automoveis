@@ -123,3 +123,6 @@ temp/
 
 # Supabase
 .supabase/
+
+# Documentation
+docs/
