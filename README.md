@@ -123,8 +123,8 @@ Git
 
 ### **1. Clone o repositório**
 ```bash
-git clone https://github.com/seu-usuario/nico-automoveis.git
-cd nico-automoveis
+git clone https://github.com/MathiasGFuhr/nico_automoveis.git
+cd nico_automoveis
 ```
 
 ### **2. Instale as dependências**
@@ -319,5 +319,4 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 <div align="center">
   <p>⭐ <strong>Se este projeto te ajudou, considere dar uma estrela!</strong> ⭐</p>
   <p>Feito com ❤️ e muito ☕</p>
-</div>#   n i c o _ a u t o m o v e i s  
- 
+</div>
