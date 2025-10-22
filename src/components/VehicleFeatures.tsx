@@ -1,4 +1,4 @@
-import { VehicleFeatures } from '@/types'
+import type { VehicleFeatures } from '@/types'
 
 interface VehicleFeaturesProps {
   features: VehicleFeatures['features']

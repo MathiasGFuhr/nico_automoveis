@@ -165,11 +165,6 @@ export default function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProp
                         className="flex-1 flex items-center justify-between"
                       >
                         <span className="font-medium">{item.title}</span>
-                        {item.badge && (
-                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                            {item.badge}
-                          </span>
-                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -194,11 +189,6 @@ export default function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProp
                         className="flex-1 flex items-center justify-between"
                       >
                         <span className="font-medium">{item.title}</span>
-                        {item.badge && (
-                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                            {item.badge}
-                          </span>
-                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
