@@ -73,12 +73,13 @@ const vehicleData: Vehicle = {
 }
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
-export default function VehicleDetailsPage({ params: { id } }: PageProps) {
+export default async function VehicleDetailsPage({ params }: PageProps) {
+  const { id } = await params
   const vehicle = vehicleData // Em produção, buscar pelo ID
 
   return (
