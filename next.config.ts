@@ -7,7 +7,16 @@ const nextConfig: NextConfig = {
   
   // Otimização de imagens
   images: {
-    domains: ['images.unsplash.com', 'oaovcnvouyzoiquuhmjq.supabase.co'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'oaovcnvouyzoiquuhmjq.supabase.co',
+      }
+    ],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -60,7 +69,6 @@ const nextConfig: NextConfig = {
   },
 
   // Production optimizations
-  swcMinify: true,
   poweredByHeader: false,
 
   // Webpack optimizations
