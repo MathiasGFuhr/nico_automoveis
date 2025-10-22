@@ -81,7 +81,7 @@ export default function AdminConfiguracoes() {
     router.push('/admin/login')
   }
 
-  const handleSave = async (settings: any, type: string) => {
+  const handleSave = async (settings: Record<string, string | number | boolean>, type: string) => {
     setIsSaving(true)
     // Simular salvamento
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -109,6 +109,7 @@ export default function AdminConfiguracoes() {
     { id: 'system', name: 'Sistema', icon: Database }
   ]
 
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -133,7 +134,7 @@ export default function AdminConfiguracoes() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-[var(--sidebar-width)]" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">

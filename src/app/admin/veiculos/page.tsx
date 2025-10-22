@@ -4,8 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/AdminSidebar'
-import { 
-  Car, 
+import ConfirmModal from '@/components/ConfirmModal'
+import { useVehicles } from '@/hooks/useVehicles'
+import { VehicleService } from '@/services/vehicleService'
+import { toast } from 'sonner'
+import {
+  Car,
   Plus,
   Edit,
   Trash2,
@@ -15,8 +19,8 @@ import {
   Menu,
   LogOut,
   Settings,
-  MoreHorizontal,
   Star,
+  MoreHorizontal,
   Calendar,
   DollarSign
 } from 'lucide-react'
@@ -28,7 +32,15 @@ export default function AdminVeiculos() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, vehicleId: string, vehicleName: string}>({
+    isOpen: false,
+    vehicleId: '',
+    vehicleName: ''
+  })
   const router = useRouter()
+  
+  // Buscar veículos do Supabase - SEMPRE NO TOPO, ANTES DE QUALQUER RETURN
+  const { vehicles: allVehicles, loading: vehiclesLoading, error: vehiclesError } = useVehicles()
 
   // Verificar autenticação
   useEffect(() => {
@@ -51,6 +63,26 @@ export default function AdminVeiculos() {
     router.push('/admin/login')
   }
 
+  const handleDeleteVehicle = async () => {
+    try {
+      await VehicleService.deleteVehicle(deleteModal.vehicleId)
+      toast.success('Veículo excluído com sucesso!')
+      // Recarregar a lista de veículos
+      window.location.reload()
+    } catch (error) {
+      console.error('Erro ao excluir veículo:', error)
+      toast.error('Erro ao excluir veículo. Tente novamente.')
+    }
+  }
+
+  const openDeleteModal = (vehicleId: string, vehicleName: string) => {
+    setDeleteModal({ isOpen: true, vehicleId, vehicleName })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, vehicleId: '', vehicleName: '' })
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
@@ -63,73 +95,64 @@ export default function AdminVeiculos() {
     return null
   }
 
-  // Dados de exemplo
-  const vehicles = [
-    {
-      id: '1',
-      brand: 'Toyota',
-      model: 'Corolla',
-      year: 2022,
-      price: 85000,
-      mileage: 15000,
-      status: 'Disponível',
-      image: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500',
-      fuel: 'Flex',
-      transmission: 'Automático',
-      color: 'Branco',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      brand: 'Honda',
-      model: 'Civic',
-      year: 2021,
-      price: 92000,
-      mileage: 22000,
-      status: 'Vendido',
-      image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500',
-      fuel: 'Flex',
-      transmission: 'Automático',
-      color: 'Prata',
-      createdAt: '2024-01-10'
-    },
-    {
-      id: '3',
-      brand: 'Volkswagen',
-      model: 'Golf',
-      year: 2020,
-      price: 78000,
-      mileage: 35000,
-      status: 'Reservado',
-      image: 'https://images.unsplash.com/photo-1549317336-206569e8475c?w=500',
-      fuel: 'Flex',
-      transmission: 'Manual',
-      color: 'Azul',
-      createdAt: '2024-01-08'
-    },
-    {
-      id: '4',
-      brand: 'Ford',
-      model: 'Focus',
-      year: 2021,
-      price: 65000,
-      mileage: 28000,
-      status: 'Disponível',
-      image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=500',
-      fuel: 'Flex',
-      transmission: 'Automático',
-      color: 'Preto',
-      createdAt: '2024-01-05'
-    }
-  ]
-
-  const filteredVehicles = vehicles.filter(vehicle => {
+  // Filtrar veículos (excluir vendidos)
+  const filteredVehicles = allVehicles.filter(vehicle => {
     const matchesSearch = vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          vehicle.model.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'all' || vehicle.status.toLowerCase() === filterStatus.toLowerCase()
-    return matchesSearch && matchesStatus
+    const notSold = vehicle.status !== 'sold' // Excluir veículos vendidos
+    return matchesSearch && matchesStatus && notSold
   })
 
+  // Loading state
+  if (vehiclesLoading) {
+    return (
+      <div className="min-h-screen bg-secondary-50 flex">
+        <div className="hidden lg:block">
+          <AdminSidebar 
+            isCollapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (vehiclesError) {
+    return (
+      <div className="min-h-screen bg-secondary-50 flex">
+        <div className="hidden lg:block">
+          <AdminSidebar 
+            isCollapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-red-600 mb-2">
+              Erro ao carregar veículos
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {vehiclesError}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Tentar Novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -154,7 +177,7 @@ export default function AdminVeiculos() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-(--sidebar-width)" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -195,9 +218,26 @@ export default function AdminVeiculos() {
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div className="flex items-center space-x-4">
-                <button className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <button 
+                  onClick={() => router.push('/admin/veiculos/novo')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
                   <Plus className="w-4 h-4" />
                   <span>Adicionar Veículo</span>
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/veiculos/destaque')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                >
+                  <Star className="w-4 h-4" />
+                  <span>Gerenciar Destaques</span>
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/veiculos/troca')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  <Car className="w-4 h-4" />
+                  <span>Veículos em Troca</span>
                 </button>
               </div>
               
@@ -228,7 +268,7 @@ export default function AdminVeiculos() {
           </div>
 
           {/* Grid de Veículos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {filteredVehicles.map((vehicle, index) => (
               <motion.div
                 key={vehicle.id}
@@ -238,33 +278,43 @@ export default function AdminVeiculos() {
                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Imagem */}
-                <div className="relative h-48 bg-gray-100">
-                  <img
-                    src={vehicle.image}
-                    alt={`${vehicle.brand} ${vehicle.model}`}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="relative h-40 sm:h-48 bg-gray-100">
+                  {vehicle.image ? (
+                    <img
+                      src={vehicle.image}
+                      alt={`${vehicle.brand} ${vehicle.model}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                      <Car className="w-16 h-16 text-gray-400" />
+                    </div>
+                  )}
                   <div className="absolute top-3 right-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      vehicle.status === 'Disponível' 
+                      vehicle.status === 'available' 
                         ? 'bg-green-100 text-green-800'
-                        : vehicle.status === 'Vendido'
+                        : vehicle.status === 'sold'
                         ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                        : vehicle.status === 'reserved'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {vehicle.status}
+                      {vehicle.status === 'available' ? 'Disponível' :
+                       vehicle.status === 'sold' ? 'Vendido' :
+                       vehicle.status === 'reserved' ? 'Reservado' : 'Manutenção'}
                     </span>
                   </div>
                 </div>
 
                 {/* Conteúdo */}
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-3">
+                <div className="p-3 sm:p-4">
+                  <div className="flex items-start justify-between mb-2 sm:mb-3">
                     <div>
-                      <h3 className="font-semibold text-secondary-900 text-lg">
+                      <h3 className="font-semibold text-secondary-900 text-base sm:text-lg line-clamp-1">
                         {vehicle.brand} {vehicle.model}
                       </h3>
-                      <p className="text-secondary-600 text-sm">
+                      <p className="text-secondary-600 text-xs sm:text-sm">
                         {vehicle.year} • {vehicle.mileage.toLocaleString()} km
                       </p>
                     </div>
@@ -273,36 +323,45 @@ export default function AdminVeiculos() {
                     </button>
                   </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-secondary-600">
+                  <div className="space-y-2 mb-3 sm:mb-4">
+                    <div className="flex items-center text-sm sm:text-base text-secondary-600">
                       <DollarSign className="w-4 h-4 mr-2" />
-                      <span className="font-semibold text-lg text-secondary-900">
+                      <span className="font-semibold text-base sm:text-lg text-secondary-900">
                         {vehicle.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </div>
-                    <div className="flex items-center text-sm text-secondary-600">
+                    <div className="flex items-center text-xs sm:text-sm text-secondary-600">
                       <Car className="w-4 h-4 mr-2" />
                       <span>{vehicle.fuel} • {vehicle.transmission}</span>
                     </div>
-                    <div className="flex items-center text-sm text-secondary-600">
+                    <div className="flex items-center text-xs sm:text-sm text-secondary-600">
                       <Calendar className="w-4 h-4 mr-2" />
-                      <span>Adicionado em {new Date(vehicle.createdAt).toLocaleDateString('pt-BR')}</span>
+                      <span>Adicionado em {new Date(vehicle.created_at || new Date()).toLocaleDateString('pt-BR')}</span>
                     </div>
                   </div>
 
                   {/* Ações */}
-                  <div className="flex items-center space-x-2">
-                    <button className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
-                      <Eye className="w-4 h-4" />
-                      <span>Ver</span>
+                  <div className="flex flex-col md:flex-row gap-2 md:gap-3">
+                    <button 
+                      onClick={() => router.push(`/veiculos/${vehicle.id}`)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors text-sm font-medium border border-primary-200 hover:border-primary-300 min-h-[44px]"
+                    >
+                      <Eye className="w-4 h-4 flex-shrink-0" />
+                      <span className="hidden md:inline">Ver</span>
                     </button>
-                    <button className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                      <Edit className="w-4 h-4" />
-                      <span>Editar</span>
+                    <button 
+                      onClick={() => router.push(`/admin/veiculos/editar/${vehicle.id}`)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium border border-blue-200 hover:border-blue-300 min-h-[44px]"
+                    >
+                      <Edit className="w-4 h-4 flex-shrink-0" />
+                      <span className="hidden md:inline">Editar</span>
                     </button>
-                    <button className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                      <span>Excluir</span>
+                    <button 
+                      onClick={() => openDeleteModal(vehicle.id, `${vehicle.brand} ${vehicle.model}`)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium border border-red-200 hover:border-red-300 min-h-[44px]"
+                    >
+                      <Trash2 className="w-4 h-4 flex-shrink-0" />
+                      <span className="hidden md:inline">Excluir</span>
                     </button>
                   </div>
                 </div>
@@ -343,7 +402,10 @@ export default function AdminVeiculos() {
                   : 'Comece adicionando seu primeiro veículo.'
                 }
               </p>
-              <button className="inline-flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+              <button 
+                onClick={() => router.push('/admin/veiculos/novo')}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
                 <Plus className="w-5 h-5" />
                 <span>Adicionar Veículo</span>
               </button>
@@ -351,6 +413,18 @@ export default function AdminVeiculos() {
           )}
         </main>
       </div>
+
+      {/* Modal de Confirmação */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteVehicle}
+        title="Excluir Veículo"
+        message={`Tem certeza que deseja excluir o veículo "${deleteModal.vehicleName}"? Esta ação não pode ser desfeita.`}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   )
 }

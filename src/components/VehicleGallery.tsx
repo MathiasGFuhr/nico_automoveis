@@ -120,19 +120,29 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
 
         {/* Miniaturas Premium */}
         <div className="p-6 bg-gray-50">
-          <div className="flex space-x-3 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Galeria de Imagens ({images.length})
+            </h3>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <span>Mostrando todas as imagens</span>
+            </div>
+          </div>
+          
+          {/* Grid responsivo para mostrar todas as miniaturas */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
             {images.map((image, index) => (
               <motion.button
                 key={index}
                 onClick={() => setSelectedImage(index)}
-                className={`shrink-0 w-24 h-24 rounded-xl overflow-hidden border-3 ${
+                className={`relative w-full aspect-square rounded-xl overflow-hidden border-3 ${
                   selectedImage === index
                     ? 'border-primary-600 ring-4 ring-primary-100 shadow-primary-200'
                     : 'border-gray-200 hover:border-primary-300 hover:shadow-lg'
                 }`}
                 initial={{ opacity: 0, y: 20, scale: 0.8 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                whileHover={{ scale: 1.08, y: -2 }}
+                whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ 
                   duration: 0.2,
@@ -144,15 +154,55 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
                   src={image}
                   alt={`Imagem ${index + 1}`}
                   className="w-full h-full object-cover"
-                  whileHover={{ scale: 1.15 }}
+                  whileHover={{ scale: 1.1 }}
                   transition={{ 
                     duration: 0.15,
                     ease: [0.25, 0.1, 0.25, 1]
                   }}
                 />
+                {/* Indicador de seleção */}
+                {selectedImage === index && (
+                  <motion.div
+                    className="absolute inset-0 bg-primary-600/20 flex items-center justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">✓</span>
+                    </div>
+                  </motion.div>
+                )}
               </motion.button>
             ))}
           </div>
+          
+          {/* Se houver muitas imagens, mostrar scroll horizontal como fallback */}
+          {images.length > 12 && (
+            <div className="mt-4">
+              <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
+                {images.map((image, index) => (
+                  <motion.button
+                    key={`scroll-${index}`}
+                    onClick={() => setSelectedImage(index)}
+                    className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                      selectedImage === index
+                        ? 'border-primary-600 ring-2 ring-primary-100'
+                        : 'border-gray-200 hover:border-primary-300'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <img
+                      src={image}
+                      alt={`Imagem ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </motion.div>

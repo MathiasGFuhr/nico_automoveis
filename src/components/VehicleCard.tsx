@@ -18,28 +18,36 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-primary-lg transition-all duration-300 border border-primary-100 hover:border-primary-300">
       <div className="aspect-w-16 aspect-h-9">
-        <img
-          src={vehicle.image}
-          alt={`${vehicle.brand} ${vehicle.model}`}
-          className="w-full h-48 object-cover"
-        />
+        {vehicle.image ? (
+          <img
+            src={vehicle.image}
+            alt={`${vehicle.brand} ${vehicle.model}`}
+            className="w-full h-40 sm:h-48 object-cover"
+          />
+        ) : (
+          <div className="w-full h-40 sm:h-48 flex items-center justify-center bg-gray-200">
+            <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+            </svg>
+          </div>
+        )}
       </div>
       
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="text-xl font-semibold text-secondary-900">
+          <h3 className="text-lg sm:text-xl font-semibold text-secondary-900 line-clamp-1">
             {vehicle.brand} {vehicle.model}
           </h3>
-          <span className="text-sm text-secondary-500">{vehicle.year}</span>
+          <span className="text-xs sm:text-sm text-secondary-500">{vehicle.year}</span>
         </div>
         
-        <div className="flex items-center text-secondary-600 mb-4">
-          <span className="text-2xl font-bold text-primary-600">
+        <div className="flex items-center text-secondary-600 mb-3 sm:mb-4">
+          <span className="text-xl sm:text-2xl font-bold text-primary-600">
             R$ {vehicle.price.toLocaleString('pt-BR')}
           </span>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 text-sm text-secondary-600 mb-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm text-secondary-600 mb-4">
           <div className="flex items-center">
             <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
@@ -63,7 +71,7 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
         
         <a 
           href={`/veiculos/${vehicle.id}`}
-          className="block w-full bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 transition-colors shadow-primary text-center"
+          className="block w-full bg-primary-600 text-white py-2 px-3 sm:px-4 rounded-lg hover:bg-primary-700 transition-colors shadow-primary text-center text-sm sm:text-base"
         >
           Ver Detalhes
         </a>

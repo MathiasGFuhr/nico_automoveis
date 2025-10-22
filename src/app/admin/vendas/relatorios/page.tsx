@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/AdminSidebar'
+import { useSales } from '@/hooks/useSales'
+import { toast } from 'sonner'
 import { 
   DollarSign, 
   Download,
@@ -27,6 +29,16 @@ export default function RelatoriosVendas() {
   const [reportType, setReportType] = useState('sales')
   const router = useRouter()
 
+  // Buscar dados reais do Supabase
+  const { 
+    sales: allSales, 
+    loading: salesLoading, 
+    error: salesError,
+    totalSales,
+    totalCommission,
+    pendingSales
+  } = useSales()
+
   // Verificar autenticação
   useEffect(() => {
     const checkAuth = () => {
@@ -48,6 +60,51 @@ export default function RelatoriosVendas() {
     router.push('/admin/login')
   }
 
+  // Calcular métricas baseadas nos dados reais
+  const getFilteredSales = () => {
+    if (!allSales) return []
+    
+    const days = parseInt(dateRange)
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - days)
+    
+    return allSales.filter(sale => {
+      const saleDate = new Date(sale.sale_date)
+      return saleDate >= cutoffDate
+    })
+  }
+
+  const filteredSales = getFilteredSales()
+  
+  // Métricas calculadas
+  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.price, 0)
+  const totalCommissionAmount = filteredSales.reduce((sum, sale) => sum + sale.commission_amount, 0)
+  const averageSaleValue = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0
+  const completedSales = filteredSales.filter(sale => sale.status === 'completed').length
+  const pendingSalesCount = filteredSales.filter(sale => sale.status === 'pending').length
+  
+  // Vendas por vendedor
+  const salesBySeller = filteredSales.reduce((acc, sale) => {
+    const sellerName = sale.seller.name
+    if (!acc[sellerName]) {
+      acc[sellerName] = { count: 0, revenue: 0 }
+    }
+    acc[sellerName].count += 1
+    acc[sellerName].revenue += sale.price
+    return acc
+  }, {} as Record<string, { count: number, revenue: number }>)
+
+  // Vendas por mês
+  const salesByMonth = filteredSales.reduce((acc, sale) => {
+    const month = new Date(sale.sale_date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    if (!acc[month]) {
+      acc[month] = { count: 0, revenue: 0 }
+    }
+    acc[month].count += 1
+    acc[month].revenue += sale.price
+    return acc
+  }, {} as Record<string, { count: number, revenue: number }>)
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
@@ -60,29 +117,26 @@ export default function RelatoriosVendas() {
     return null
   }
 
-  // Dados de exemplo
-  const salesData = [
-    { month: 'Jan', sales: 120000, vehicles: 3, commission: 6000 },
-    { month: 'Fev', sales: 150000, vehicles: 4, commission: 7500 },
-    { month: 'Mar', sales: 180000, vehicles: 5, commission: 9000 },
-    { month: 'Abr', sales: 220000, vehicles: 6, commission: 11000 }
-  ]
+  // Dados reais calculados acima
+  const topSellersArray = Object.entries(salesBySeller)
+    .map(([name, data]) => ({ name, sales: data.count, revenue: data.revenue, commission: data.revenue * 0.05 }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5)
 
-  const topSellers = [
-    { name: 'Nico', sales: 12, revenue: 850000, commission: 42500 },
-    { name: 'Lucas', sales: 8, revenue: 620000, commission: 31000 }
-  ]
+  const topVehiclesArray = filteredSales
+    .reduce((acc, sale) => {
+      const key = `${sale.vehicle.brands.name} ${sale.vehicle.model}`
+      if (!acc[key]) {
+        acc[key] = { brand: sale.vehicle.brands.name, model: sale.vehicle.model, sales: 0, revenue: 0 }
+      }
+      acc[key].sales += 1
+      acc[key].revenue += sale.price
+      return acc
+    }, {} as Record<string, { brand: string, model: string, sales: number, revenue: number }>)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5)
 
-  const topVehicles = [
-    { brand: 'Toyota', model: 'Corolla', sales: 8, revenue: 680000 },
-    { brand: 'Honda', model: 'Civic', sales: 6, revenue: 552000 },
-    { brand: 'Volkswagen', model: 'Golf', sales: 4, revenue: 312000 }
-  ]
-
-  const totalSales = salesData.reduce((sum, item) => sum + item.sales, 0)
-  const totalVehicles = salesData.reduce((sum, item) => sum + item.vehicles, 0)
-  const totalCommission = salesData.reduce((sum, item) => sum + item.commission, 0)
-
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -107,7 +161,7 @@ export default function RelatoriosVendas() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-(--sidebar-width)" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -196,7 +250,7 @@ export default function RelatoriosVendas() {
                 <div>
                   <p className="text-sm font-medium text-secondary-600 mb-1">Total de Vendas</p>
                   <p className="text-2xl font-bold text-secondary-900">
-                    R$ {totalSales.toLocaleString('pt-BR')}
+                    R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                   <div className="flex items-center mt-2">
                     <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
@@ -218,7 +272,7 @@ export default function RelatoriosVendas() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-secondary-600 mb-1">Veículos Vendidos</p>
-                  <p className="text-2xl font-bold text-secondary-900">{totalVehicles}</p>
+                  <p className="text-2xl font-bold text-secondary-900">{completedSales}</p>
                   <div className="flex items-center mt-2">
                     <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
                     <span className="text-sm text-green-600">+8%</span>
@@ -240,7 +294,7 @@ export default function RelatoriosVendas() {
                 <div>
                   <p className="text-sm font-medium text-secondary-600 mb-1">Comissões</p>
                   <p className="text-2xl font-bold text-secondary-900">
-                    R$ {totalCommission.toLocaleString('pt-BR')}
+                    R$ {totalCommissionAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                   <div className="flex items-center mt-2">
                     <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
@@ -265,18 +319,18 @@ export default function RelatoriosVendas() {
             >
               <h3 className="text-lg font-semibold text-secondary-900 mb-4">Vendas por Mês</h3>
               <div className="space-y-4">
-                {salesData.map((item, index) => (
-                  <div key={item.month} className="flex items-center justify-between">
-                    <span className="text-secondary-600">{item.month}</span>
+                {Object.entries(salesByMonth).map(([month, data], index) => (
+                  <div key={month} className="flex items-center justify-between">
+                    <span className="text-secondary-600">{month}</span>
                     <div className="flex items-center space-x-4">
                       <div className="w-32 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-primary-600 h-2 rounded-full" 
-                          style={{ width: `${(item.sales / 250000) * 100}%` }}
+                          style={{ width: `${(data.revenue / Math.max(...Object.values(salesByMonth).map(d => d.revenue))) * 100}%` }}
                         ></div>
                       </div>
                       <span className="text-sm font-medium text-secondary-900 w-20 text-right">
-                        R$ {item.sales.toLocaleString('pt-BR')}
+                        R$ {data.revenue.toLocaleString('pt-BR')}
                       </span>
                     </div>
                   </div>
@@ -293,7 +347,7 @@ export default function RelatoriosVendas() {
             >
               <h3 className="text-lg font-semibold text-secondary-900 mb-4">Top Vendedores</h3>
               <div className="space-y-4">
-                {topSellers.map((seller, index) => (
+                {topSellersArray.map((seller, index) => (
                   <div key={seller.name} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
@@ -311,7 +365,7 @@ export default function RelatoriosVendas() {
                         R$ {seller.revenue.toLocaleString('pt-BR')}
                       </div>
                       <div className="text-sm text-secondary-600">
-                        R$ {seller.commission.toLocaleString('pt-BR')} comissão
+                        R$ {seller.commission.toLocaleString('pt-BR')} desconto
                       </div>
                     </div>
                   </div>
@@ -339,7 +393,7 @@ export default function RelatoriosVendas() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {topVehicles.map((vehicle, index) => (
+                  {topVehiclesArray.map((vehicle, index) => (
                     <tr key={vehicle.brand} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-4">
                         <div className="font-medium text-secondary-900">{vehicle.brand} {vehicle.model}</div>

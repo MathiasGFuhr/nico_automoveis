@@ -17,30 +17,17 @@ export interface Vehicle {
   acceptsTrade: boolean
   licensed: boolean
   images: string[]
+  image: string // Imagem principal
   description: string
   features: string[]
-  specifications: VehicleSpecifications
   seller: VehicleSeller
+  status: 'available' | 'reserved' | 'sold' | 'maintenance'
+  featured: boolean
+  created_at?: string
+  updated_at?: string
 }
 
-export interface VehicleSpecifications {
-  motor: string
-  potencia: string
-  torque: string
-  combustivel: string
-  transmissao: string
-  tracao: string
-  consumo: string
-  aceleracao: string
-  velocidade: string
-  tanque: string
-  peso: string
-  comprimento: string
-  largura: string
-  altura: string
-  entreEixos: string
-  portaMalas: string
-}
+
 
 export interface VehicleSeller {
   name: string

@@ -45,6 +45,7 @@ export default function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProp
       submenu: [
         { title: 'Todos os Veículos', href: '/admin/veiculos' },
         { title: 'Adicionar Veículo', href: '/admin/veiculos/novo' },
+        { title: 'Veículos Vendidos', href: '/admin/veiculos/vendidos' },
         { title: 'Categorias', href: '/admin/veiculos/categorias' }
       ]
     },
@@ -55,8 +56,7 @@ export default function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProp
       active: pathname.startsWith('/admin/clientes'),
       submenu: [
         { title: 'Todos os Clientes', href: '/admin/clientes' },
-        { title: 'Novo Cliente', href: '/admin/clientes/novo' },
-        { title: 'Interessados', href: '/admin/clientes/interessados' }
+        { title: 'Novo Cliente', href: '/admin/clientes/novo' }
       ]
     },
     {
@@ -99,7 +99,7 @@ export default function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProp
       initial={false}
       animate={{ width: isCollapsed ? 80 : 280 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="bg-white border-r border-gray-200 h-screen flex flex-col shadow-lg"
+      className="bg-white border-r border-gray-200 h-screen flex flex-col shadow-lg fixed left-0 top-0 z-40"
     >
       {/* Header */}
       <div className="p-4 border-b border-gray-200">

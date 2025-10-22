@@ -80,6 +80,7 @@ export default function AdminRelatorios() {
     ]
   }
 
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -104,7 +105,7 @@ export default function AdminRelatorios() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-[var(--sidebar-width)]" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -328,7 +329,7 @@ export default function AdminRelatorios() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-secondary-900">Vendedor</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-secondary-900">Vendas</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-secondary-900">Receita</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-secondary-900">Comissão</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-secondary-900">Desconto</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">

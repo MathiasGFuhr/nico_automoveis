@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/AdminSidebar'
+import { VehicleService } from '@/services/vehicleService'
+import { ImageService } from '@/services/imageService'
+import { FuelType, TransmissionType } from '@/types/vehicle'
+import { toast } from 'sonner'
 import { 
   Car, 
   Save,
@@ -13,7 +17,8 @@ import {
   Upload,
   X,
   Plus,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Star
 } from 'lucide-react'
 
 export default function NovoVeiculo() {
@@ -37,9 +42,16 @@ export default function NovoVeiculo() {
     category: '',
     condition: '',
     description: '',
+    city: 'Santo Cristo',
+    state: 'RS',
+    plateEnd: '',
+    acceptsTrade: false,
+    licensed: true,
     features: [] as string[],
-    images: [] as string[]
+    images: [] as File[],
+    imagePreviews: [] as string[]
   })
+  const [primaryImageIndex, setPrimaryImageIndex] = useState<number>(0)
 
   // Verificar autenticação
   useEffect(() => {
@@ -81,30 +93,139 @@ export default function NovoVeiculo() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file))
+      const newFiles = Array.from(files)
+      const newPreviews = newFiles.map(file => URL.createObjectURL(file))
+      
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, ...newImages]
+        images: [...prev.images, ...newFiles],
+        imagePreviews: [...prev.imagePreviews, ...newPreviews]
       }))
+      
+      // Se é a primeira imagem, definir como principal
+      if (formData.imagePreviews.length === 0) {
+        setPrimaryImageIndex(0)
+      }
     }
   }
 
   const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }))
+    setFormData(prev => {
+      // Revogar URL do preview para liberar memória
+      URL.revokeObjectURL(prev.imagePreviews[index])
+      
+      return {
+        ...prev,
+        images: prev.images.filter((_, i) => i !== index),
+        imagePreviews: prev.imagePreviews.filter((_, i) => i !== index)
+      }
+    })
+    
+    // Ajustar índice da imagem principal se necessário
+    if (primaryImageIndex >= index && primaryImageIndex > 0) {
+      setPrimaryImageIndex(prev => prev - 1)
+    } else if (primaryImageIndex === index && formData.imagePreviews.length > 1) {
+      setPrimaryImageIndex(0)
+    }
+  }
+
+  const setPrimaryImage = (index: number) => {
+    setPrimaryImageIndex(index)
+    toast.success('Imagem principal definida!')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
     
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setIsSaving(false)
-    router.push('/admin/veiculos')
+    try {
+      // Buscar IDs reais das marcas e categorias
+      const brands = await VehicleService.getBrands()
+      const categories = await VehicleService.getCategories()
+      
+      // Encontrar marca
+      let brandId = brands.find(b => b.name.toLowerCase() === formData.brand.toLowerCase())?.id
+      if (!brandId) {
+        // Se não encontrar, usar a primeira marca disponível
+        if (brands.length > 0) {
+          brandId = brands[0].id
+        } else {
+          throw new Error('Nenhuma marca encontrada. Execute o script de dados iniciais.')
+        }
+      }
+      
+      // Encontrar categoria
+      let categoryId = categories.find(c => c.name.toLowerCase() === (formData.category || 'sedan').toLowerCase())?.id
+      if (!categoryId) {
+        // Se não encontrar, usar a primeira categoria disponível
+        if (categories.length > 0) {
+          categoryId = categories[0].id
+        } else {
+          throw new Error('Nenhuma categoria encontrada. Execute o script de dados iniciais.')
+        }
+      }
+
+      // Preparar dados para o Supabase
+      const vehicleData = {
+        model: formData.model,
+        brand_id: brandId,
+        category_id: categoryId,
+        year: formData.year ? parseInt(formData.year) : new Date().getFullYear(),
+        price: formData.price ? parseFloat(formData.price.replace(/[^\d,]/g, '').replace(',', '.')) : 0,
+        mileage: formData.mileage ? parseInt(formData.mileage) : 0,
+        fuel_type: formData.fuel as FuelType,
+        transmission: formData.transmission as TransmissionType,
+        color: formData.color,
+        doors: formData.doors ? parseInt(formData.doors) : 4, // Default para 4 portas
+        city: formData.city,
+        state: formData.state,
+        plate_end: formData.plateEnd,
+        accepts_trade: formData.acceptsTrade,
+        licensed: formData.licensed,
+        description: formData.description,
+        status: 'available' as const,
+        featured: false
+      }
+
+      // Salvar no Supabase
+      const newVehicle = await VehicleService.addVehicle(vehicleData)
+      
+      console.log('Veículo criado com sucesso:', newVehicle)
+      
+      // Salvar características (features)
+      try {
+        await VehicleService.upsertVehicleFeatures(newVehicle.id, formData.features)
+      } catch (featureError) {
+        console.error('Erro ao salvar características:', featureError)
+      }
+
+      // Upload das imagens se houver
+      if (formData.images.length > 0) {
+        try {
+          console.log(`Enviando ${formData.images.length} imagens para o veículo ${newVehicle.id}`)
+          const uploadedUrls = await ImageService.uploadMultipleImages(formData.images, newVehicle.id)
+          console.log(`${uploadedUrls.length} imagens enviadas com sucesso`)
+        } catch (imageError) {
+          console.error('Erro ao enviar imagens:', imageError)
+          // Não falhar o cadastro por causa das imagens
+        }
+      }
+
+      // Limpar imagens duplicadas
+      try {
+        await ImageService.removeDuplicateImages(newVehicle.id)
+      } catch (cleanupError) {
+        console.error('Erro ao limpar imagens duplicadas:', cleanupError)
+      }
+      
+      // Redirecionar para a lista de veículos
+      router.push('/admin/veiculos')
+      } catch (error) {
+        console.error('Erro ao salvar veículo:', error)
+        toast.error('Erro ao salvar veículo. Tente novamente.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (isLoading) {
@@ -131,6 +252,7 @@ export default function NovoVeiculo() {
     'Airbag', 'ABS', 'Teto Solar', 'Rodas de Liga', 'Piloto Automático'
   ]
 
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -155,7 +277,7 @@ export default function NovoVeiculo() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-(--sidebar-width)" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -256,12 +378,26 @@ export default function NovoVeiculo() {
                         Preço *
                       </label>
                       <input
-                        type="number"
+                        type="text"
                         required
                         value={formData.price}
-                        onChange={(e) => handleInputChange('price', e.target.value)}
+                        onChange={(e) => {
+                          // Remover tudo que não é dígito
+                          const numericValue = e.target.value.replace(/[^\d]/g, '')
+                          // Converter para número e formatar
+                          if (numericValue) {
+                            const number = parseInt(numericValue)
+                            const formatted = (number / 100).toLocaleString('pt-BR', { 
+                              style: 'currency', 
+                              currency: 'BRL' 
+                            })
+                            handleInputChange('price', formatted)
+                          } else {
+                            handleInputChange('price', '')
+                          }
+                        }}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="85000"
+                        placeholder="R$ 0,00"
                       />
                     </div>
 
@@ -329,6 +465,42 @@ export default function NovoVeiculo() {
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="Branco"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-secondary-700 mb-2">
+                        Final da Placa
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.plateEnd}
+                        onChange={(e) => handleInputChange('plateEnd', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="8"
+                        maxLength={1}
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.acceptsTrade}
+                          onChange={(e) => handleInputChange('acceptsTrade', e.target.checked)}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-secondary-700">Aceita troca</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.licensed}
+                          onChange={(e) => handleInputChange('licensed', e.target.checked)}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-secondary-700">Licenciado</span>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -442,22 +614,47 @@ export default function NovoVeiculo() {
                   </div>
 
                   {/* Preview das Imagens */}
-                  {formData.images.length > 0 && (
+                  {formData.imagePreviews.length > 0 && (
                     <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {formData.images.map((image, index) => (
-                        <div key={index} className="relative">
+                      {formData.imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
                           <img
-                            src={image}
+                            src={preview}
                             alt={`Preview ${index + 1}`}
                             className="w-full h-24 object-cover rounded-lg"
                           />
+                          
+                          {/* Botão de remover */}
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
                           >
                             <X className="w-4 h-4" />
                           </button>
+                          
+                          {/* Botão de estrela para imagem principal */}
+                          <button
+                            type="button"
+                            onClick={() => setPrimaryImage(index)}
+                            className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                              primaryImageIndex === index
+                                ? 'bg-yellow-500 text-white opacity-100'
+                                : 'bg-blue-500 text-white hover:bg-blue-600 opacity-0 group-hover:opacity-100'
+                            }`}
+                            title={primaryImageIndex === index ? "Imagem principal" : "Definir como imagem principal"}
+                          >
+                            <Star className={`w-4 h-4 ${primaryImageIndex === index ? 'fill-current' : ''}`} />
+                          </button>
+                          
+                          {/* Indicador de imagem principal */}
+                          <div className={`absolute bottom-1 left-1 text-white text-xs px-2 py-1 rounded-full transition-opacity ${
+                            primaryImageIndex === index
+                              ? 'bg-yellow-500 opacity-100'
+                              : 'bg-green-500 opacity-0 group-hover:opacity-100'
+                          }`}>
+                            {primaryImageIndex === index ? 'Imagem principal' : 'Clique na estrela para definir como principal'}
+                          </div>
                         </div>
                       ))}
                     </div>

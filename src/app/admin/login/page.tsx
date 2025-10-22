@@ -31,19 +31,37 @@ export default function AdminLogin() {
     setError('')
 
     try {
-      // Simulação de autenticação (em produção, integrar com Supabase Auth)
-      if (formData.username === 'admin' && formData.password === 'nico2024') {
-        // Salvar sessão do admin (localStorage + cookies para middleware)
+      // Autenticação com Supabase
+      const { createClient } = await import('@/lib/supabase-client')
+      const supabase = createClient()
+      
+      // Tentar fazer login no Supabase primeiro
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: 'admin@nicoautomoveis.com',
+          password: 'admin123'
+        })
+        
+        if (error) throw error
+        
+        // Login bem-sucedido no Supabase
         localStorage.setItem('adminAuth', 'true')
         localStorage.setItem('adminUser', formData.username)
+        document.cookie = 'adminAuth=true; path=/; max-age=86400'
         
-        // Definir cookie para middleware
-        document.cookie = 'adminAuth=true; path=/; max-age=86400' // 24 horas
-        
-        // Redirecionar para dashboard
         router.push('/admin/dashboard')
-      } else {
-        setError('Credenciais inválidas. Verifique seu usuário e senha.')
+        return
+      } catch (supabaseError) {
+        // Fallback para autenticação local se Supabase falhar
+        if (formData.username === 'admin' && formData.password === 'nico2024') {
+          localStorage.setItem('adminAuth', 'true')
+          localStorage.setItem('adminUser', formData.username)
+          document.cookie = 'adminAuth=true; path=/; max-age=86400'
+          
+          router.push('/admin/dashboard')
+        } else {
+          setError('Credenciais inválidas. Verifique seu usuário e senha.')
+        }
       }
     } catch (err) {
       setError('Erro ao fazer login. Tente novamente.')

@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/AdminSidebar'
+import ConfirmModal from '@/components/ConfirmModal'
+import { useSales } from '@/hooks/useSales'
+import { SalesService } from '@/services/salesService'
+import { PDFService } from '@/services/pdfService'
+import { toast } from 'sonner'
 import { 
   DollarSign, 
   Plus,
@@ -11,16 +16,15 @@ import {
   Trash2,
   Eye,
   Search,
-  Filter,
   Menu,
   LogOut,
   Settings,
-  MoreHorizontal,
   Calendar,
   User,
   Car,
   TrendingUp,
-  FileText
+  FileText,
+  Download
 } from 'lucide-react'
 
 export default function AdminVendas() {
@@ -30,7 +34,22 @@ export default function AdminVendas() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, saleId: string, saleCode: string}>({
+    isOpen: false,
+    saleId: '',
+    saleCode: ''
+  })
   const router = useRouter()
+  
+  // Buscar vendas do Supabase - SEMPRE NO TOPO, ANTES DE QUALQUER RETURN
+  const { 
+    sales: allSales, 
+    loading: salesLoading, 
+    error: salesError,
+    totalSales,
+    totalCommission,
+    pendingSales
+  } = useSales()
 
   // Verificar autenticação
   useEffect(() => {
@@ -53,6 +72,70 @@ export default function AdminVendas() {
     router.push('/admin/login')
   }
 
+  const handleDeleteSale = async () => {
+    try {
+      await SalesService.deleteSale(deleteModal.saleId)
+      toast.success('Venda excluída com sucesso!')
+      // Recarregar a lista de vendas
+      window.location.reload()
+    } catch (error) {
+      console.error('Erro ao excluir venda:', error)
+      toast.error('Erro ao excluir venda. Tente novamente.')
+    }
+  }
+
+  const openDeleteModal = (saleId: string, saleCode: string) => {
+    setDeleteModal({ isOpen: true, saleId, saleCode })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, saleId: '', saleCode: '' })
+  }
+
+  const handleGeneratePDF = async (sale: {
+    id: string
+    sale_code?: string
+    client?: { name: string; email: string; phone: string; cpf?: string }
+    vehicle?: { brand: string; model: string; year: number }
+    seller?: { name: string }
+    total_amount?: number
+    price?: number
+    payment_method: string
+    sale_date: string
+    commission_rate: number
+    commission_amount?: number
+    notes?: string
+  }) => {
+    try {
+      console.log('🔍 DEBUG - Dados da venda:', sale)
+      
+      const pdfData = {
+        saleCode: sale.sale_code || `VND-${sale.id}`,
+        clientName: sale.client?.name || 'Cliente não informado',
+        clientEmail: sale.client?.email || 'Email não informado',
+        clientPhone: sale.client?.phone || 'Telefone não informado',
+        clientCpf: sale.client?.cpf || 'CPF não informado',
+        vehicleBrand: sale.vehicle?.brand || 'Marca não informada',
+        vehicleModel: sale.vehicle?.model || 'Modelo não informado',
+        vehicleYear: sale.vehicle?.year || new Date().getFullYear(),
+        vehiclePrice: sale.price || 0,
+        paymentMethod: sale.payment_method || 'Não informado',
+        saleDate: sale.sale_date || new Date().toISOString().split('T')[0],
+        sellerName: sale.seller?.name || 'Vendedor não informado',
+        commission: sale.commission_amount || 0,
+        notes: sale.notes || ''
+      }
+      
+      console.log('📄 DEBUG - Dados do PDF:', pdfData)
+      
+      await PDFService.generateSalePDF(pdfData)
+      toast.success('PDF gerado com sucesso!')
+    } catch (error) {
+      console.error('❌ Erro ao gerar PDF:', error)
+      toast.error('Erro ao gerar PDF. Tente novamente.')
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
@@ -65,66 +148,64 @@ export default function AdminVendas() {
     return null
   }
 
-  // Dados de exemplo
-  const sales = [
-    {
-      id: 'V001',
-      client: 'João Silva',
-      vehicle: 'Toyota Corolla 2022',
-      price: 85000,
-      status: 'Concluída',
-      date: '2024-01-15',
-      paymentMethod: 'Financiamento',
-      commission: 4250,
-      seller: 'Nico'
-    },
-    {
-      id: 'V002',
-      client: 'Maria Santos',
-      vehicle: 'Honda Civic 2021',
-      price: 92000,
-      status: 'Pendente',
-      date: '2024-01-12',
-      paymentMethod: 'À vista',
-      commission: 4600,
-      seller: 'Lucas'
-    },
-    {
-      id: 'V003',
-      client: 'Pedro Oliveira',
-      vehicle: 'Volkswagen Golf 2020',
-      price: 78000,
-      status: 'Cancelada',
-      date: '2024-01-08',
-      paymentMethod: 'Financiamento',
-      commission: 0,
-      seller: 'Nico'
-    },
-    {
-      id: 'V004',
-      client: 'Ana Costa',
-      vehicle: 'Ford Focus 2021',
-      price: 65000,
-      status: 'Concluída',
-      date: '2024-01-05',
-      paymentMethod: 'À vista',
-      commission: 3250,
-      seller: 'Lucas'
-    }
-  ]
-
-  const filteredSales = sales.filter(sale => {
-    const matchesSearch = sale.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         sale.vehicle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         sale.id.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filtrar vendas
+  const filteredSales = allSales.filter(sale => {
+    const matchesSearch = sale.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         `${sale.vehicle.brand} ${sale.vehicle.model}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         sale.sale_code.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'all' || sale.status.toLowerCase() === filterStatus.toLowerCase()
     return matchesSearch && matchesStatus
   })
 
-  const totalSales = sales.filter(s => s.status === 'Concluída').reduce((sum, sale) => sum + sale.price, 0)
-  const totalCommission = sales.filter(s => s.status === 'Concluída').reduce((sum, sale) => sum + sale.commission, 0)
-  const pendingSales = sales.filter(s => s.status === 'Pendente').length
+  // Loading state
+  if (salesLoading) {
+    return (
+      <div className="min-h-screen bg-secondary-50 flex">
+        <div className="hidden lg:block">
+          <AdminSidebar 
+            isCollapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    )
+  }
 
+  // Error state
+  if (salesError) {
+    return (
+      <div className="min-h-screen bg-secondary-50 flex">
+        <div className="hidden lg:block">
+          <AdminSidebar 
+            isCollapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-red-600 mb-2">
+              Erro ao carregar vendas
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {salesError}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Tentar Novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -149,7 +230,7 @@ export default function AdminVendas() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-(--sidebar-width)" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -248,11 +329,17 @@ export default function AdminVendas() {
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div className="flex items-center space-x-4">
-                <button className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                <button 
+                  onClick={() => router.push('/admin/vendas/nova')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
                   <Plus className="w-4 h-4" />
                   <span>Nova Venda</span>
                 </button>
-                <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-secondary-700 rounded-lg hover:bg-gray-50 transition-colors">
+                <button 
+                  onClick={() => router.push('/admin/vendas/relatorios')}
+                  className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-secondary-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <FileText className="w-4 h-4" />
                   <span>Relatório</span>
                 </button>
@@ -310,20 +397,20 @@ export default function AdminVendas() {
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <span className="font-mono text-sm text-secondary-600">{sale.id}</span>
+                        <span className="font-mono text-sm text-secondary-600">{sale.sale_code}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
                             <User className="w-4 h-4 text-primary-600" />
                           </div>
-                          <span className="font-medium text-secondary-900">{sale.client}</span>
+                          <span className="font-medium text-secondary-900">{sale.client.name}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
                           <Car className="w-4 h-4 text-secondary-400" />
-                          <span className="text-secondary-900">{sale.vehicle}</span>
+                          <span className="text-secondary-900">{sale.vehicle.brand} {sale.vehicle.model} {sale.vehicle.year}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -331,39 +418,60 @@ export default function AdminVendas() {
                           <div className="font-semibold text-secondary-900">
                             {sale.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </div>
-                          <div className="text-sm text-secondary-600">{sale.paymentMethod}</div>
+                          <div className="text-sm text-secondary-600">{sale.payment_method}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          sale.status === 'Concluída' 
+                          sale.status === 'completed' 
                             ? 'bg-green-100 text-green-800'
-                            : sale.status === 'Pendente'
+                            : sale.status === 'pending'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {sale.status}
+                          {sale.status === 'completed' ? 'Concluída' :
+                           sale.status === 'pending' ? 'Pendente' :
+                           sale.status === 'cancelled' ? 'Cancelada' : 'Reembolsada'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center text-sm text-secondary-600">
                           <Calendar className="w-4 h-4 mr-2" />
-                          <span>{new Date(sale.date).toLocaleDateString('pt-BR')}</span>
+                          <span>{new Date(sale.sale_date).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-secondary-900">{sale.seller}</span>
+                        <span className="text-secondary-900">{sale.seller.name}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <button className="p-2 text-secondary-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
-                            <Eye className="w-4 h-4" />
+                        <div className="flex flex-col md:flex-row gap-2 md:gap-1">
+                          <button 
+                            onClick={() => router.push(`/admin/vendas/${sale.id}`)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors text-sm font-medium border border-primary-200 hover:border-primary-300 min-h-[36px]"
+                          >
+                            <Eye className="w-4 h-4 shrink-0" />
+                            <span className="hidden md:inline">Ver</span>
                           </button>
-                          <button className="p-2 text-secondary-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Edit className="w-4 h-4" />
+                          <button 
+                            onClick={() => handleGeneratePDF(sale)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors text-sm font-medium border border-green-200 hover:border-green-300 min-h-[36px]"
+                          >
+                            <Download className="w-4 h-4 shrink-0" />
+                            <span className="hidden md:inline">PDF</span>
                           </button>
-                          <button className="p-2 text-secondary-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4" />
+                          <button 
+                            onClick={() => router.push(`/admin/vendas/editar/${sale.id}`)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium border border-blue-200 hover:border-blue-300 min-h-[36px]"
+                          >
+                            <Edit className="w-4 h-4 shrink-0" />
+                            <span className="hidden md:inline">Editar</span>
+                          </button>
+                          <button 
+                            onClick={() => openDeleteModal(sale.id, sale.sale_code)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium border border-red-200 hover:border-red-300 min-h-[36px]"
+                          >
+                            <Trash2 className="w-4 h-4 shrink-0" />
+                            <span className="hidden md:inline">Excluir</span>
                           </button>
                         </div>
                       </td>
@@ -387,7 +495,10 @@ export default function AdminVendas() {
                   : 'Comece registrando sua primeira venda.'
                 }
               </p>
-              <button className="inline-flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+              <button 
+                onClick={() => router.push('/admin/vendas/nova')}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
                 <Plus className="w-5 h-5" />
                 <span>Nova Venda</span>
               </button>
@@ -395,6 +506,18 @@ export default function AdminVendas() {
           )}
         </main>
       </div>
+
+      {/* Modal de Confirmação */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteSale}
+        title="Excluir Venda"
+        message={`Tem certeza que deseja excluir a venda "${deleteModal.saleCode}"? Esta ação não pode ser desfeita.`}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import VehicleInfo from '@/components/VehicleInfo'
 import ContactForm from '@/components/ContactForm'
 import Breadcrumb from '@/components/Breadcrumb'
 import RelatedVehicles from '@/components/RelatedVehicles'
+import { VehicleService } from '@/services/vehicleService'
 import { Vehicle, FuelType, TransmissionType } from '@/types'
 
 // Dados de exemplo - em produção viriam do Supabase
@@ -24,6 +25,7 @@ const vehicleData: Vehicle = {
   plateEnd: '8',
   acceptsTrade: true,
   licensed: true,
+  image: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800',
   images: [
     'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800',
     'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800',
@@ -31,6 +33,8 @@ const vehicleData: Vehicle = {
     'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800',
     'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800'
   ],
+  status: 'available',
+  featured: true,
   description: 'Veículo em excelente estado de conservação, único dono, revisões em dia. Carro seminovo com poucos quilômetros rodados, ideal para quem busca conforto e economia.',
   features: [
     'Ar condicionado',
@@ -80,7 +84,64 @@ interface PageProps {
 
 export default async function VehicleDetailsPage({ params }: PageProps) {
   const { id } = await params
-  const vehicle = vehicleData // Em produção, buscar pelo ID
+  
+  console.log('🔍 Buscando veículo com ID:', id)
+  
+  // Buscar veículo real do Supabase
+  let vehicle: Vehicle
+  try {
+    vehicle = await VehicleService.getVehicleById(id)
+    console.log('✅ Veículo encontrado:', vehicle)
+    
+    if (!vehicle) {
+      console.log('❌ Veículo não encontrado')
+      return (
+        <div className="min-h-screen bg-gradient-to from-slate-50 via-white to-slate-100">
+          <Header />
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">Veículo não encontrado</h1>
+              <p className="text-gray-600 mb-8">O veículo que você está procurando não existe ou foi removido.</p>
+              <a 
+                href="/veiculos" 
+                className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                Ver todos os veículos
+              </a>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      )
+    }
+    
+    // Debug: verificar se descrição e características estão presentes
+    console.log('📝 Descrição:', vehicle.description)
+    console.log('🔧 Características:', vehicle.features)
+    console.log('⚙️ Especificações:', vehicle.specifications)
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar veículo:', error)
+    return (
+      <div className="min-h-screen bg-gradient-to from-slate-50 via-white to-slate-100">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Erro ao carregar veículo</h1>
+            <p className="text-gray-600 mb-8">Ocorreu um erro ao carregar as informações do veículo.</p>
+            <p className="text-sm text-red-600 mb-4">Erro: {error instanceof Error ? error.message : 'Erro desconhecido'}</p>
+            <a 
+              href="/veiculos" 
+              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Ver todos os veículos
+            </a>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to from-slate-50 via-white to-slate-100">
@@ -212,196 +273,7 @@ export default async function VehicleDetailsPage({ params }: PageProps) {
         </div>
 
         {/* Veículos Relacionados */}
-        <RelatedVehicles vehicles={[
-          {
-            id: '2',
-            brand: 'Honda',
-            model: 'Civic',
-            year: 2021,
-            price: 95000,
-            mileage: 25000,
-            fuel: FuelType.FLEX,
-            transmission: TransmissionType.AUTOMATICO,
-            color: 'Branco',
-            doors: 4,
-            city: 'São Paulo',
-            state: 'SP',
-            plateEnd: '5',
-            acceptsTrade: true,
-            licensed: true,
-            images: [
-              'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800',
-              'https://images.unsplash.com/photo-1549317336-206569e8475c?w=800',
-            ],
-            description: 'Honda Civic 2021',
-            features: ['Airbag', 'Freios ABS', 'Ar Condicionado', 'Direção Elétrica', 'Central Multimídia', 'Bluetooth', 'Rodas de Liga Leve', 'Faróis de Neblina', 'Piloto Automático', 'Chave Presencial'],
-            specifications: {
-              motor: '1.5 Turbo',
-              potencia: '173 cv',
-              torque: '22,4 kgfm',
-              combustivel: FuelType.FLEX,
-              transmissao: TransmissionType.AUTOMATICO,
-              tracao: 'Dianteira',
-              consumo: '12,5 km/l',
-              aceleracao: '8,2 segundos',
-              velocidade: '200 km/h',
-              tanque: '47 litros',
-              peso: '1.300 kg',
-              comprimento: '4.630 mm',
-              largura: '1.800 mm',
-              altura: '1.410 mm',
-              entreEixos: '2.700 mm',
-              portaMalas: '420 litros',
-            },
-            seller: {
-              name: 'João Silva',
-              phone: '(11) 99999-9999',
-              email: 'joao@exemplo.com',
-              address: 'Rua das Flores, 123 - São Paulo, SP'
-            }
-          },
-          {
-            id: '3',
-            brand: 'Volkswagen',
-            model: 'Golf',
-            year: 2020,
-            price: 78000,
-            mileage: 35000,
-            fuel: FuelType.FLEX,
-            transmission: TransmissionType.AUTOMATICO,
-            color: 'Prata',
-            doors: 4,
-            city: 'São Paulo',
-            state: 'SP',
-            plateEnd: '2',
-            acceptsTrade: false,
-            licensed: true,
-            images: [
-              'https://images.unsplash.com/photo-1583121274602-3e2820c691e7?w=800',
-              'https://images.unsplash.com/photo-1593642532400-26709d815480?w=800',
-            ],
-            description: 'Volkswagen Golf 2020',
-            features: ['Airbag', 'Freios ABS', 'Ar Condicionado', 'Direção Elétrica', 'Central Multimídia', 'Bluetooth', 'Rodas de Liga Leve', 'Faróis de Neblina', 'Piloto Automático', 'Chave Presencial'],
-            specifications: {
-              motor: '1.4 TSI',
-              potencia: '150 cv',
-              torque: '25,5 kgfm',
-              combustivel: FuelType.FLEX,
-              transmissao: TransmissionType.AUTOMATICO,
-              tracao: 'Dianteira',
-              consumo: '11,8 km/l',
-              aceleracao: '9,1 segundos',
-              velocidade: '195 km/h',
-              tanque: '50 litros',
-              peso: '1.350 kg',
-              comprimento: '4.280 mm',
-              largura: '1.790 mm',
-              altura: '1.480 mm',
-              entreEixos: '2.630 mm',
-              portaMalas: '380 litros',
-            },
-            seller: {
-              name: 'João Silva',
-              phone: '(11) 99999-9999',
-              email: 'joao@exemplo.com',
-              address: 'Rua das Flores, 123 - São Paulo, SP'
-            }
-          },
-          {
-            id: '4',
-            brand: 'Ford',
-            model: 'Focus',
-            year: 2019,
-            price: 65000,
-            mileage: 45000,
-            fuel: FuelType.FLEX,
-            transmission: TransmissionType.AUTOMATICO,
-            color: 'Azul',
-            doors: 4,
-            city: 'São Paulo',
-            state: 'SP',
-            plateEnd: '7',
-            acceptsTrade: true,
-            licensed: true,
-            images: [
-              'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800',
-              'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800',
-            ],
-            description: 'Ford Focus 2019',
-            features: ['Airbag', 'Freios ABS', 'Ar Condicionado', 'Direção Elétrica', 'Central Multimídia', 'Bluetooth', 'Rodas de Liga Leve', 'Faróis de Neblina', 'Piloto Automático', 'Chave Presencial'],
-            specifications: {
-              motor: '2.0 16V',
-              potencia: '170 cv',
-              torque: '20,4 kgfm',
-              combustivel: FuelType.FLEX,
-              transmissao: TransmissionType.AUTOMATICO,
-              tracao: 'Dianteira',
-              consumo: '10,5 km/l',
-              aceleracao: '9,8 segundos',
-              velocidade: '190 km/h',
-              tanque: '55 litros',
-              peso: '1.400 kg',
-              comprimento: '4.530 mm',
-              largura: '1.820 mm',
-              altura: '1.480 mm',
-              entreEixos: '2.650 mm',
-              portaMalas: '400 litros',
-            },
-            seller: {
-              name: 'João Silva',
-              phone: '(11) 99999-9999',
-              email: 'joao@exemplo.com',
-              address: 'Rua das Flores, 123 - São Paulo, SP'
-            }
-          },
-          {
-            id: '5',
-            brand: 'Chevrolet',
-            model: 'Cruze',
-            year: 2021,
-            price: 88000,
-            mileage: 20000,
-            fuel: FuelType.FLEX,
-            transmission: TransmissionType.AUTOMATICO,
-            color: 'Preto',
-            doors: 4,
-            city: 'São Paulo',
-            state: 'SP',
-            plateEnd: '1',
-            acceptsTrade: true,
-            licensed: true,
-            images: [
-              'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800',
-              'https://images.unsplash.com/photo-1549317336-206569e8475c?w=800',
-            ],
-            description: 'Chevrolet Cruze 2021',
-            features: ['Airbag', 'Freios ABS', 'Ar Condicionado', 'Direção Elétrica', 'Central Multimídia', 'Bluetooth', 'Rodas de Liga Leve', 'Faróis de Neblina', 'Piloto Automático', 'Chave Presencial'],
-            specifications: {
-              motor: '1.4 Turbo',
-              potencia: '153 cv',
-              torque: '24,5 kgfm',
-              combustivel: FuelType.FLEX,
-              transmissao: TransmissionType.AUTOMATICO,
-              tracao: 'Dianteira',
-              consumo: '12,0 km/l',
-              aceleracao: '8,5 segundos',
-              velocidade: '195 km/h',
-              tanque: '52 litros',
-              peso: '1.320 kg',
-              comprimento: '4.660 mm',
-              largura: '1.800 mm',
-              altura: '1.460 mm',
-              entreEixos: '2.700 mm',
-              portaMalas: '445 litros',
-            },
-            seller: {
-              name: 'Maria Santos',
-              phone: '(11) 88888-8888',
-              email: 'maria@exemplo.com',
-              address: 'Av. Paulista, 1000 - São Paulo, SP'
-            }
-          }
-        ]} />
+        <RelatedVehicles vehicleId={vehicle.id} />
       </main>
       
       <Footer />

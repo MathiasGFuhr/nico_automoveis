@@ -6,138 +6,8 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import VehicleCard from '@/components/VehicleCard'
 import VehicleFilter from '@/components/VehicleFilter'
-
-// Dados de exemplo - em produção viriam do Supabase
-const allVehicles = [
-  {
-    id: '1',
-    brand: 'Toyota',
-    model: 'Corolla',
-    year: 2022,
-    price: 85000,
-    mileage: 15000,
-    image: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500',
-    fuel: 'Flex',
-    transmission: 'Automático',
-    color: 'Branco',
-    doors: 4,
-    category: 'Sedan',
-    condition: 'Seminovo',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS', 'Airbag']
-  },
-  {
-    id: '2',
-    brand: 'Honda',
-    model: 'Civic',
-    year: 2021,
-    price: 92000,
-    mileage: 22000,
-    image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500',
-    fuel: 'Flex',
-    transmission: 'Automático',
-    color: 'Preto',
-    doors: 4,
-    category: 'Sedan',
-    condition: 'Seminovo',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS', 'Airbag', 'GPS']
-  },
-  {
-    id: '3',
-    brand: 'Volkswagen',
-    model: 'Golf',
-    year: 2020,
-    price: 78000,
-    mileage: 35000,
-    image: 'https://images.unsplash.com/photo-1549317336-206569e8475c?w=500',
-    fuel: 'Flex',
-    transmission: 'Manual',
-    color: 'Prata',
-    doors: 5,
-    category: 'Hatchback',
-    condition: 'Usado',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS']
-  },
-  {
-    id: '4',
-    brand: 'Ford',
-    model: 'Focus',
-    year: 2021,
-    price: 65000,
-    mileage: 28000,
-    image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=500',
-    fuel: 'Flex',
-    transmission: 'Automático',
-    color: 'Azul',
-    doors: 4,
-    category: 'Sedan',
-    condition: 'Seminovo',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS', 'Airbag', 'Som']
-  },
-  {
-    id: '5',
-    brand: 'Chevrolet',
-    model: 'Onix',
-    year: 2023,
-    price: 72000,
-    mileage: 12000,
-    image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500',
-    fuel: 'Flex',
-    transmission: 'Automático',
-    color: 'Branco',
-    doors: 4,
-    category: 'Hatchback',
-    condition: 'Novo',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS', 'Airbag', 'GPS', 'Bluetooth']
-  },
-  {
-    id: '6',
-    brand: 'Fiat',
-    model: 'Argo',
-    year: 2022,
-    price: 68000,
-    mileage: 18000,
-    image: 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=500',
-    fuel: 'Flex',
-    transmission: 'Manual',
-    color: 'Vermelho',
-    doors: 5,
-    category: 'Hatchback',
-    condition: 'Seminovo',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS']
-  },
-  {
-    id: '7',
-    brand: 'BMW',
-    model: 'Série 3',
-    year: 2023,
-    price: 180000,
-    mileage: 8000,
-    image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=500',
-    fuel: 'Gasolina',
-    transmission: 'Automático',
-    color: 'Preto',
-    doors: 4,
-    category: 'Sedan',
-    condition: 'Novo',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS', 'Airbag', 'GPS', 'Bluetooth', 'Teto Solar', 'Bancos de Couro']
-  },
-  {
-    id: '8',
-    brand: 'Volkswagen',
-    model: 'Tiguan',
-    year: 2022,
-    price: 120000,
-    mileage: 25000,
-    image: 'https://images.unsplash.com/photo-1549317336-206569e8475c?w=500',
-    fuel: 'Flex',
-    transmission: 'Automático',
-    color: 'Cinza',
-    doors: 5,
-    category: 'SUV',
-    condition: 'Seminovo',
-    features: ['Ar Condicionado', 'Direção Hidráulica', 'Freios ABS', 'Airbag', 'GPS', 'Câmera de Ré']
-  }
-]
+import { useVehicles } from '@/hooks/useVehicles'
+import { VehicleFilters, FuelType, TransmissionType } from '@/types/vehicle'
 
 interface FilterState {
   search: string
@@ -177,9 +47,26 @@ function VeiculosContent() {
     setFilters(urlFilters)
   }, [urlFilters])
 
-  // Filtrar veículos
+  // Converter filtros para o formato do Supabase
+  const supabaseFilters: VehicleFilters = useMemo(() => ({
+    brand: filters.brand || undefined,
+    yearFrom: filters.year ? parseInt(filters.year) : undefined,
+    yearTo: filters.year ? parseInt(filters.year) : undefined,
+    priceFrom: filters.priceMin ? parseInt(filters.priceMin) : undefined,
+    priceTo: filters.priceMax ? parseInt(filters.priceMax) : undefined,
+    fuel: filters.fuel as FuelType || undefined,
+    transmission: filters.transmission as TransmissionType || undefined
+  }), [filters])
+
+  // Buscar veículos do Supabase
+  const { vehicles: allVehicles, loading, error } = useVehicles(supabaseFilters)
+
+  // Filtrar veículos localmente (busca por texto e excluir vendidos)
   const filteredVehicles = useMemo(() => {
     let filtered = [...allVehicles]
+
+    // Excluir veículos vendidos
+    filtered = filtered.filter(vehicle => vehicle.status !== 'sold')
 
     // Busca por texto
     if (filters.search) {
@@ -191,37 +78,56 @@ function VeiculosContent() {
       )
     }
 
-    // Filtros específicos
-    if (filters.brand) {
-      filtered = filtered.filter(vehicle => vehicle.brand === filters.brand)
-    }
-
-    if (filters.year) {
-      filtered = filtered.filter(vehicle => vehicle.year.toString() === filters.year)
-    }
-
-    if (filters.priceMin) {
-      filtered = filtered.filter(vehicle => vehicle.price >= parseInt(filters.priceMin))
-    }
-
-    if (filters.priceMax) {
-      filtered = filtered.filter(vehicle => vehicle.price <= parseInt(filters.priceMax))
-    }
-
-    if (filters.fuel) {
-      filtered = filtered.filter(vehicle => vehicle.fuel === filters.fuel)
-    }
-
-    if (filters.transmission) {
-      filtered = filtered.filter(vehicle => vehicle.transmission === filters.transmission)
-    }
-
-
     return filtered
-  }, [filters])
+  }, [allVehicles, filters.search])
 
   const handleFilter = (newFilters: FilterState) => {
     setFilters(newFilters)
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-secondary-50">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-secondary-600">Carregando veículos...</p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-secondary-50">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-2xl font-semibold text-red-600 mb-2">
+              Erro ao carregar veículos
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Tentar Novamente
+            </button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -307,7 +213,7 @@ function VeiculosContent() {
 export default function VeiculosPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-slate-100">
         <Header />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center h-64">

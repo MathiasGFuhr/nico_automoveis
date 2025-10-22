@@ -83,6 +83,19 @@
   .ring-primary-100 {
     box-shadow: 0 0 0 4px rgba(254, 242, 242, 0.5);
   }
+
+  /* Placeholders mais claros */
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af !important; /* gray-400 */
+    opacity: 1;
+  }
+  
+  input:focus::placeholder,
+  textarea:focus::placeholder {
+    color: #d1d5db !important; /* gray-300 */
+    opacity: 1;
+  }
 }
 
 @theme {

@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/AdminSidebar'
+import ConfirmModal from '@/components/ConfirmModal'
+import { useClients } from '@/hooks/useClients'
+import { ClientService } from '@/services/clientService'
+import { toast } from 'sonner'
 import { 
   Users, 
   Plus,
@@ -11,14 +15,11 @@ import {
   Trash2,
   Eye,
   Search,
-  Filter,
   Menu,
   LogOut,
   Settings,
-  MoreHorizontal,
   Phone,
   Mail,
-  MapPin,
   Calendar,
   Star
 } from 'lucide-react'
@@ -30,7 +31,15 @@ export default function AdminClientes() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, clientId: string, clientName: string}>({
+    isOpen: false,
+    clientId: '',
+    clientName: ''
+  })
   const router = useRouter()
+  
+  // Buscar clientes do Supabase - SEMPRE NO TOPO, ANTES DE QUALQUER RETURN
+  const { clients: allClients, loading: clientsLoading, error: clientsError } = useClients()
 
   // Verificar autenticação
   useEffect(() => {
@@ -53,6 +62,26 @@ export default function AdminClientes() {
     router.push('/admin/login')
   }
 
+  const handleDeleteClient = async () => {
+    try {
+      await ClientService.deleteClient(deleteModal.clientId)
+      toast.success('Cliente excluído com sucesso!')
+      // Recarregar a lista de clientes
+      window.location.reload()
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error)
+      toast.error('Erro ao excluir cliente. Tente novamente.')
+    }
+  }
+
+  const openDeleteModal = (clientId: string, clientName: string) => {
+    setDeleteModal({ isOpen: true, clientId, clientName })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, clientId: '', clientName: '' })
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
@@ -65,74 +94,64 @@ export default function AdminClientes() {
     return null
   }
 
-  // Dados de exemplo
-  const clients = [
-    {
-      id: '1',
-      name: 'João Silva',
-      email: 'joao.silva@email.com',
-      phone: '(55) 9 9999-9999',
-      city: 'Santo Cristo',
-      state: 'RS',
-      status: 'Ativo',
-      type: 'Comprador',
-      lastContact: '2024-01-15',
-      vehiclesInterested: 2,
-      totalPurchases: 1,
-      rating: 5
-    },
-    {
-      id: '2',
-      name: 'Maria Santos',
-      email: 'maria.santos@email.com',
-      phone: '(55) 9 8888-8888',
-      city: 'Santa Rosa',
-      state: 'RS',
-      status: 'Interessado',
-      type: 'Prospect',
-      lastContact: '2024-01-12',
-      vehiclesInterested: 1,
-      totalPurchases: 0,
-      rating: 4
-    },
-    {
-      id: '3',
-      name: 'Pedro Oliveira',
-      email: 'pedro.oliveira@email.com',
-      phone: '(55) 9 7777-7777',
-      city: 'Santo Cristo',
-      state: 'RS',
-      status: 'Inativo',
-      type: 'Comprador',
-      lastContact: '2023-12-20',
-      vehiclesInterested: 0,
-      totalPurchases: 2,
-      rating: 5
-    },
-    {
-      id: '4',
-      name: 'Ana Costa',
-      email: 'ana.costa@email.com',
-      phone: '(55) 9 6666-6666',
-      city: 'Ijuí',
-      state: 'RS',
-      status: 'Ativo',
-      type: 'Vendedor',
-      lastContact: '2024-01-14',
-      vehiclesInterested: 0,
-      totalPurchases: 0,
-      rating: 5
-    }
-  ]
-
-  const filteredClients = clients.filter(client => {
+  // Filtrar clientes
+  const filteredClients = allClients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.phone.includes(searchTerm)
-    const matchesType = filterType === 'all' || client.type.toLowerCase() === filterType.toLowerCase()
+                         client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         client.phone?.includes(searchTerm)
+    const matchesType = filterType === 'all' || client.client_type.toLowerCase() === filterType.toLowerCase()
     return matchesSearch && matchesType
   })
 
+  // Loading state
+  if (clientsLoading) {
+    return (
+      <div className="min-h-screen bg-secondary-50 flex">
+        <div className="hidden lg:block">
+          <AdminSidebar 
+            isCollapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (clientsError) {
+    return (
+      <div className="min-h-screen bg-secondary-50 flex">
+        <div className="hidden lg:block">
+          <AdminSidebar 
+            isCollapsed={sidebarCollapsed} 
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-red-600 mb-2">
+              Erro ao carregar clientes
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {clientsError}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Tentar Novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -157,7 +176,7 @@ export default function AdminClientes() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-[var(--sidebar-width)]" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -283,30 +302,32 @@ export default function AdminClientes() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          client.type === 'Comprador' 
+                          client.client_type === 'buyer' 
                             ? 'bg-green-100 text-green-800'
-                            : client.type === 'Vendedor'
+                            : client.client_type === 'seller'
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {client.type}
+                          {client.client_type === 'buyer' ? 'Comprador' : 
+                           client.client_type === 'seller' ? 'Vendedor' : 'Prospect'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          client.status === 'Ativo' 
+                          client.status === 'active' 
                             ? 'bg-green-100 text-green-800'
-                            : client.status === 'Interessado'
+                            : client.status === 'interested'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {client.status}
+                          {client.status === 'active' ? 'Ativo' :
+                           client.status === 'interested' ? 'Interessado' : 'Inativo'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center text-sm text-secondary-600">
                           <Calendar className="w-4 h-4 mr-2" />
-                          <span>{new Date(client.lastContact).toLocaleDateString('pt-BR')}</span>
+                          <span>{new Date(client.created_at).toLocaleDateString('pt-BR')}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -322,20 +343,32 @@ export default function AdminClientes() {
                             />
                           ))}
                           <span className="ml-2 text-sm text-secondary-600">
-                            ({client.totalPurchases} compras)
+                            ({client.rating} estrelas)
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <button className="p-2 text-secondary-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
-                            <Eye className="w-4 h-4" />
+                        <div className="flex flex-col md:flex-row gap-2 md:gap-1">
+                          <button 
+                            onClick={() => router.push(`/admin/clientes/editar/${client.id}`)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors text-sm font-medium border border-primary-200 hover:border-primary-300 min-h-[36px]"
+                          >
+                            <Eye className="w-4 h-4 flex-shrink-0" />
+                            <span className="hidden md:inline">Ver</span>
                           </button>
-                          <button className="p-2 text-secondary-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Edit className="w-4 h-4" />
+                          <button 
+                            onClick={() => router.push(`/admin/clientes/editar/${client.id}`)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium border border-blue-200 hover:border-blue-300 min-h-[36px]"
+                          >
+                            <Edit className="w-4 h-4 flex-shrink-0" />
+                            <span className="hidden md:inline">Editar</span>
                           </button>
-                          <button className="p-2 text-secondary-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4" />
+                          <button 
+                            onClick={() => openDeleteModal(client.id, client.name)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium border border-red-200 hover:border-red-300 min-h-[36px]"
+                          >
+                            <Trash2 className="w-4 h-4 flex-shrink-0" />
+                            <span className="hidden md:inline">Excluir</span>
                           </button>
                         </div>
                       </td>
@@ -359,7 +392,10 @@ export default function AdminClientes() {
                   : 'Comece adicionando seu primeiro cliente.'
                 }
               </p>
-              <button className="inline-flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+              <button 
+                onClick={() => router.push('/admin/clientes/novo')}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
                 <Plus className="w-5 h-5" />
                 <span>Novo Cliente</span>
               </button>
@@ -367,6 +403,18 @@ export default function AdminClientes() {
           )}
         </main>
       </div>
+
+      {/* Modal de Confirmação */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteClient}
+        title="Excluir Cliente"
+        message={`Tem certeza que deseja excluir o cliente "${deleteModal.clientName}"? Esta ação não pode ser desfeita.`}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   )
 }

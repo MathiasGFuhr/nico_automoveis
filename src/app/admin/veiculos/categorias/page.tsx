@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/AdminSidebar'
+import ConfirmModal from '@/components/ConfirmModal'
 import { 
   Car, 
   Plus,
@@ -25,7 +26,21 @@ export default function CategoriasVeiculos() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
-  const [editingCategory, setEditingCategory] = useState(null)
+  interface Category {
+    id: string
+    name: string
+    description: string
+    vehicleCount: number
+    icon: string
+    color: string
+  }
+
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, categoryId: string, categoryName: string}>({
+    isOpen: false,
+    categoryId: '',
+    categoryName: ''
+  })
   const router = useRouter()
 
   const [newCategory, setNewCategory] = useState({
@@ -114,15 +129,26 @@ export default function CategoriasVeiculos() {
     setNewCategory({ name: '', description: '', icon: 'Car' })
   }
 
-  const handleEditCategory = (category: any) => {
+  const handleEditCategory = (category: Category) => {
     setEditingCategory(category)
   }
 
-  const handleDeleteCategory = (categoryId: string) => {
+  const handleDeleteCategory = () => {
     // Simular exclusão
-    console.log('Deletar categoria:', categoryId)
+    console.log('Deletar categoria:', deleteModal.categoryId)
+    // Aqui você implementaria a lógica real de exclusão
+    setDeleteModal({ isOpen: false, categoryId: '', categoryName: '' })
   }
 
+  const openDeleteModal = (categoryId: string, categoryName: string) => {
+    setDeleteModal({ isOpen: true, categoryId, categoryName })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, categoryId: '', categoryName: '' })
+  }
+
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -147,7 +173,7 @@ export default function CategoriasVeiculos() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-[var(--sidebar-width)]" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -234,7 +260,7 @@ export default function CategoriasVeiculos() {
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteCategory(category.id)}
+                      onClick={() => openDeleteModal(category.id, category.name)}
                       className="p-2 text-secondary-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -354,6 +380,18 @@ export default function CategoriasVeiculos() {
           )}
         </main>
       </div>
+
+      {/* Modal de Confirmação */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteCategory}
+        title="Excluir Categoria"
+        message={`Tem certeza que deseja excluir a categoria "${deleteModal.categoryName}"? Esta ação não pode ser desfeita.`}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </div>
   )
 }

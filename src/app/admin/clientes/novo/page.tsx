@@ -83,11 +83,50 @@ export default function NovoCliente() {
     e.preventDefault()
     setIsSaving(true)
     
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setIsSaving(false)
-    router.push('/admin/clientes')
+    try {
+      // Importar ClientService dinamicamente
+      const { ClientService } = await import('@/services/clientService')
+      
+      // Mapear tipo do cliente para valores do banco
+      const getClientType = (type: string): 'buyer' | 'seller' | 'prospect' => {
+        switch (type.toLowerCase()) {
+          case 'comprador':
+            return 'buyer'
+          case 'vendedor':
+            return 'seller'
+          case 'prospect':
+            return 'prospect'
+          default:
+            return 'buyer'
+        }
+      }
+
+      // Preparar dados para o Supabase
+      const clientData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        cpf: formData.cpf,
+        city: formData.city,
+        state: formData.state,
+        client_type: getClientType(formData.type),
+        status: 'active' as const,
+        rating: 5,
+        notes: formData.notes
+      }
+      
+      // Criar cliente no Supabase
+      const newClient = await ClientService.createClient(clientData)
+      console.log('Cliente criado com sucesso:', newClient)
+      
+      // Redirecionar para lista de clientes
+      router.push('/admin/clientes')
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error)
+      alert('Erro ao criar cliente. Tente novamente.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (isLoading) {
@@ -107,6 +146,7 @@ export default function NovoCliente() {
     'Toyota', 'Honda', 'Volkswagen', 'Ford', 'Chevrolet', 'BMW'
   ]
 
+  const sidebarCssVar = { ['--sidebar-width' as string]: sidebarCollapsed ? '80px' : '280px' } as React.CSSProperties
   return (
     <div className="min-h-screen bg-secondary-50 flex">
       {/* Sidebar */}
@@ -131,7 +171,7 @@ export default function NovoCliente() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-[var(--sidebar-width)]" style={sidebarCssVar}>
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="px-4 sm:px-6 lg:px-8">

@@ -1,11 +1,24 @@
 import { Vehicle } from '@/types'
+import { VehicleService } from '@/services/vehicleService'
 import Link from 'next/link'
 
 interface RelatedVehiclesProps {
-  vehicles: Vehicle[]
+  vehicleId: string
 }
 
-export default function RelatedVehicles({ vehicles }: RelatedVehiclesProps) {
+export default async function RelatedVehicles({ vehicleId }: RelatedVehiclesProps) {
+  // Buscar veículos relacionados do Supabase
+  let vehicles: Vehicle[] = []
+  try {
+    const allVehicles = await VehicleService.getVehicles()
+    // Filtrar o veículo atual e pegar os primeiros 4 relacionados
+    vehicles = allVehicles
+      .filter(v => v.id !== vehicleId)
+      .slice(0, 4)
+  } catch (error) {
+    console.error('Erro ao buscar veículos relacionados:', error)
+    vehicles = []
+  }
   return (
     <div className="mt-16">
       <div className="text-center mb-8">
@@ -23,11 +36,19 @@ export default function RelatedVehicles({ vehicles }: RelatedVehiclesProps) {
             <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group hover:-translate-y-2">
               {/* Imagem do Veículo */}
               <div className="relative aspect-w-16 aspect-h-12 overflow-hidden">
-                <img
-                  src={vehicle.images[0]}
-                  alt={`${vehicle.brand} ${vehicle.model}`}
-                  className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
-                />
+                {vehicle.images && vehicle.images.length > 0 ? (
+                  <img
+                    src={vehicle.images[0]}
+                    alt={`${vehicle.brand} ${vehicle.model}`}
+                    className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-48 flex items-center justify-center bg-gray-200">
+                    <svg className="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
                 <div className="absolute top-4 right-4">
                   <button className="bg-white/90 backdrop-blur-sm text-gray-800 p-2 rounded-full shadow-lg hover:bg-white transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
