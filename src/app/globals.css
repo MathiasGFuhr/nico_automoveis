@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/* Estilos customizados para design mais bonito */
+@layer components {
+  .border-3 {
+    border-width: 3px;
+  }
+  
+  .shadow-primary-200 {
+    box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.15);
+  }
+  
+  .hover\:scale-105:hover {
+    transform: scale(1.05);
+  }
+  
+  .hover\:-translate-y-1:hover {
+    transform: translateY(-4px);
+  }
+  
+  .transition-all {
+    transition: all 0.3s ease;
+  }
+  
+  .duration-300 {
+    transition-duration: 300ms;
+  }
+  
+  /* Estilos para Modal de Imagem */
+  .modal-overlay {
+    backdrop-filter: blur(4px);
+  }
+  
+  .modal-image {
+    max-height: 90vh;
+    max-width: 90vw;
+  }
+  
+  .modal-thumbnails {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  }
+  
+  .modal-thumbnails::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .modal-thumbnails::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .modal-thumbnails::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+  }
+  
+  /* Estilos Premium */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .shadow-3xl {
+    box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25);
+  }
+  
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+  }
+  
+  .hover\:scale-110:hover {
+    transform: scale(1.1);
+  }
+  
+  .ring-4 {
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+  }
+  
+  .ring-primary-100 {
+    box-shadow: 0 0 0 4px rgba(254, 242, 242, 0.5);
+  }
+}
+
+@theme {
+  --color-primary-50: #fef2f2;
+  --color-primary-100: #fee2e2;
+  --color-primary-200: #fecaca;
+  --color-primary-300: #fca5a5;
+  --color-primary-400: #f87171;
+  --color-primary-500: #ef4444;
+  --color-primary-600: #dc2626;
+  --color-primary-700: #b91c1c;
+  --color-primary-800: #991b1b;
+  --color-primary-900: #7f1d1d;
+
+  --color-secondary-50: #f9fafb;
+  --color-secondary-100: #f3f4f6;
+  --color-secondary-200: #e5e7eb;
+  --color-secondary-300: #d1d5db;
+  --color-secondary-400: #9ca3af;
+  --color-secondary-500: #6b7280;
+  --color-secondary-600: #4b5563;
+  --color-secondary-700: #374151;
+  --color-secondary-800: #1f2937;
+  --color-secondary-900: #111827;
+}
