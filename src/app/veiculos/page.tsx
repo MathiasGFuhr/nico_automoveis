@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -149,7 +149,7 @@ interface FilterState {
   transmission: string
 }
 
-export default function VeiculosPage() {
+function VeiculosContent() {
   const searchParams = useSearchParams()
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -161,19 +161,21 @@ export default function VeiculosPage() {
     transmission: ''
   })
 
-  // Carregar filtros da URL
+  // Calcular filtros da URL
+  const urlFilters = useMemo(() => ({
+    search: searchParams.get('search') || '',
+    brand: searchParams.get('brand') || '',
+    year: searchParams.get('year') || '',
+    priceMin: searchParams.get('priceMin') || '',
+    priceMax: searchParams.get('priceMax') || '',
+    fuel: searchParams.get('fuel') || '',
+    transmission: searchParams.get('transmission') || ''
+  }), [searchParams])
+
+  // Sincronizar filtros com URL apenas quando necessário
   useEffect(() => {
-    const newFilters: FilterState = {
-      search: searchParams.get('search') || '',
-      brand: searchParams.get('brand') || '',
-      year: searchParams.get('year') || '',
-      priceMin: searchParams.get('priceMin') || '',
-      priceMax: searchParams.get('priceMax') || '',
-      fuel: searchParams.get('fuel') || '',
-      transmission: searchParams.get('transmission') || ''
-    }
-    setFilters(newFilters)
-  }, [searchParams])
+    setFilters(urlFilters)
+  }, [urlFilters])
 
   // Filtrar veículos
   const filteredVehicles = useMemo(() => {
@@ -299,5 +301,26 @@ export default function VeiculosPage() {
       
       <Footer />
     </div>
+  )
+}
+
+export default function VeiculosPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <Header />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-secondary-600">Carregando veículos...</p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <VeiculosContent />
+    </Suspense>
   )
 }
