@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import AdminSidebar from '@/components/AdminSidebar'
 import ConfirmModal from '@/components/ConfirmModal'
 import { VehicleService } from '@/services/vehicleService'
@@ -285,9 +286,11 @@ export default function VeiculosTroca() {
                 >
                   <div className="aspect-w-16 aspect-h-9 bg-gray-100">
                     {vehicle.image ? (
-                      <img
+                      <Image
                         src={vehicle.image}
                         alt={vehicle.model}
+                        width={400}
+                        height={192}
                         className="w-full h-48 object-cover"
                       />
                     ) : (

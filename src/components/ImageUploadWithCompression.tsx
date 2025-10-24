@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { useImageCompression } from '@/hooks/useImageCompression'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -248,9 +249,11 @@ export const ImageUploadWithCompression = ({
                   >
                     {imageUrls[index] ? (
                       <div className="w-full h-full relative">
-                        <img
+                        <Image
                           src={imageUrls[index]}
                           alt={file.name}
+                          width={300}
+                          height={200}
                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                           onLoad={() => {
                             console.log('✅ IMAGEM CARREGADA:', file.name, 'URL:', imageUrls[index])

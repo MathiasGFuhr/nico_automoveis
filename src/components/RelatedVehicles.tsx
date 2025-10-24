@@ -3,6 +3,7 @@
 import { Vehicle } from '@/types'
 import { VehicleService } from '@/services/vehicleService'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { usePrefetch } from '@/hooks/usePrefetch'
 
@@ -33,9 +34,11 @@ function RelatedVehicleCard({ vehicle }: { vehicle: Vehicle }) {
         <div className="relative aspect-w-16 aspect-h-12 overflow-hidden">
           {vehicle.images && vehicle.images.length > 0 ? (
             <div className="w-full h-48 bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-2">
-              <img
+              <Image
                 src={vehicle.images[0]}
                 alt={`${vehicle.brand} ${vehicle.model}`}
+                width={300}
+                height={192}
                 className="w-auto h-auto max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300"
               />
             </div>

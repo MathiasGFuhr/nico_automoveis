@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import AdminSidebar from '@/components/AdminSidebar'
 import { VehicleService } from '@/services/vehicleService'
 import { toast } from 'sonner'
@@ -242,9 +243,11 @@ export default function GerenciarDestaque() {
                       {/* Imagem do veículo */}
                       <div className="aspect-w-16 aspect-h-9 mb-4">
                         {vehicle.image ? (
-                          <img
+                          <Image
                             src={vehicle.image}
                             alt={`${vehicle.brand} ${vehicle.model}`}
+                            width={300}
+                            height={128}
                             className="w-full h-32 object-cover rounded-lg"
                           />
                         ) : (

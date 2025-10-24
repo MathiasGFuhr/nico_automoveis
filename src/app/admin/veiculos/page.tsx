@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import AdminSidebar from '@/components/AdminSidebar'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useVehicles } from '@/hooks/useVehicles'
@@ -308,9 +309,11 @@ export default function AdminVeiculos() {
                 {/* Imagem - SEM MARGENS */}
                 <div className="relative h-40 sm:h-48 overflow-hidden vehicle-card">
                   {vehicle.image ? (
-                    <img
+                    <Image
                       src={vehicle.image}
                       alt={`${vehicle.brand} ${vehicle.model}`}
+                      width={300}
+                      height={200}
                       className="w-full h-full object-cover"
                       style={{ 
                         width: '100%', 

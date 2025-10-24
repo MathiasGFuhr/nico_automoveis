@@ -251,6 +251,11 @@ export class ImageService {
     
     return data || []
   }
+
+  // Alias para getVehicleImages (método usado no código)
+  static async getImagesByVehicle(vehicleId: string) {
+    return this.getVehicleImages(vehicleId)
+  }
   
   // Definir imagem primária
   static async setPrimaryImage(vehicleId: string, imageId: string): Promise<void> {

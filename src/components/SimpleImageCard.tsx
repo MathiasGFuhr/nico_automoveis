@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import imageCompression from 'browser-image-compression'
 
 interface SimpleImageCardProps {
@@ -40,8 +41,7 @@ export const SimpleImageCard = ({ onImagesChange, maxFiles = 10 }: SimpleImageCa
         validFiles.map(async (file) => {
           const compressed = await imageCompression(file, {
             maxSizeMB: 0.5, // 500KB máximo
-            maxWidthOrHeight: 1200, // 1200px máximo
-            quality: 0.8 // 80% qualidade
+            maxWidthOrHeight: 1200 // 1200px máximo
           })
           return compressed
         })
@@ -151,9 +151,11 @@ export const SimpleImageCard = ({ onImagesChange, maxFiles = 10 }: SimpleImageCa
             <div key={index} className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 relative transform hover:-translate-y-1">
               {/* Preview da Imagem */}
               <div className="aspect-square bg-linear-to-br from-gray-50 to-gray-100 relative overflow-hidden flex items-center justify-center">
-                <img
+                <Image
                   src={imageUrls[index]}
                   alt={file.name}
+                  width={300}
+                  height={300}
                   className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
                 />
                 

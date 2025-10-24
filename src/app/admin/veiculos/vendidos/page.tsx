@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import AdminSidebar from '@/components/AdminSidebar'
 import { useAllVehicles } from '@/hooks/useAllVehicles'
 import { toast } from 'sonner'
@@ -290,9 +291,11 @@ export default function VeiculosVendidos() {
                     
                     if (imageUrl) {
                       return (
-                        <img 
+                        <Image 
                           src={imageUrl} 
                           alt={`${vehicle.brand} ${vehicle.model}`}
+                          width={300}
+                          height={200}
                           className="w-full h-full object-cover"
                           onLoad={() => console.log(`✅ Imagem carregada para ${vehicle.model}`)}
                           onError={(e) => {

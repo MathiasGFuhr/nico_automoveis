@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import AdminSidebar from '@/components/AdminSidebar'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics'
@@ -352,9 +353,11 @@ export default function AdminDashboard() {
                   >
                     <div className="flex items-center space-x-4">
                       {vehicle.image ? (
-                        <img
+                        <Image
                           src={vehicle.image}
                           alt={`${vehicle.brand} ${vehicle.model}`}
+                          width={64}
+                          height={64}
                           className="w-16 h-16 object-cover rounded-lg"
                         />
                       ) : (

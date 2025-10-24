@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
 import { Vehicle } from '@/types'
 import { usePrefetch } from '@/hooks/usePrefetch'
@@ -64,13 +65,15 @@ export default function VehicleCardWithPrefetch({ vehicle, priority = false }: V
         {/* Container da imagem - SEM MARGENS */}
         <div className="w-full h-40 sm:h-48 relative overflow-hidden">
           {vehicle.image ? (
-            <img
+            <Image
               src={getOptimizedImageUrl(vehicle.image)}
               alt={`${vehicle.brand} ${vehicle.model}`}
+              width={400}
+              height={192}
               className={`w-full h-full object-cover transition-all duration-300 ${
                 isHovered ? 'scale-105' : 'scale-100'
               }`}
-              loading={priority ? "eager" : "lazy"}
+              priority={priority}
               style={{
                 width: '100%',
                 height: '100%',

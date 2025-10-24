@@ -1,5 +1,6 @@
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Vehicle {
   id: string
@@ -60,9 +61,11 @@ export default function VehicleCard({
       {/* Container com altura fixa - SEM MARGENS */}
       <div className="w-full h-40 sm:h-48 relative overflow-hidden" style={{ padding: 0, margin: 0 }}>
         {vehicle.image ? (
-          <img
+          <Image
             src={getOptimizedImageUrl(vehicle.image)}
             alt={`${vehicle.brand} ${vehicle.model}`}
+            width={400}
+            height={192}
             className="w-full h-full object-cover cursor-pointer transition-transform duration-300 hover:scale-105"
             style={{
               width: '100%',
