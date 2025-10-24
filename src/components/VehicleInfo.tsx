@@ -13,23 +13,22 @@ interface VehicleInfoProps {
 
 export default function VehicleInfo({ vehicle }: VehicleInfoProps) {
   const containerVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      y: 0,
       transition: {
-        duration: 0.5,
-        staggerChildren: 0.1
+        duration: 0.3,
+        staggerChildren: 0.05 // Reduzido para 50ms
       }
     }
   }
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.3 }
+      transition: { duration: 0.2 } // Reduzido para 200ms
     }
   }
 

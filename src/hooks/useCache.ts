@@ -1,105 +1,126 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
-interface CacheEntry<T> {
+interface CacheItem<T> {
   data: T
   timestamp: number
+  ttl: number // Time to live in milliseconds
 }
 
-const cache = new Map<string, CacheEntry<unknown>>()
+interface UseCacheReturn {
+  get: <T>(key: string) => T | null
+  set: <T>(key: string, data: T, ttl?: number) => void
+  clear: (key?: string) => void
+  has: (key: string) => boolean
+  isExpired: (key: string) => boolean
+}
 
-/**
- * Hook para gerenciar cache de dados
- * 
- * @param key - Chave única para o cache
- * @param fetchFn - Função assíncrona para buscar os dados
- * @param ttl - Time to live em milissegundos (padrão: 5 minutos)
- * @returns Dados cacheados, loading, error e função refetch
- */
-export function useCache<T>(
-  key: string,
-  fetchFn: () => Promise<T>,
-  ttl: number = 5 * 60 * 1000 // 5 minutos
-) {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+// Classe de cache global para uso em serviços
+class GlobalCache {
+  private cache = new Map<string, CacheItem<any>>()
 
-  const fetchData = useCallback(async (forceRefresh = false) => {
-    try {
-      setLoading(true)
-      setError(null)
+  get<T>(key: string): T | null {
+    const item = this.cache.get(key)
+    if (!item) return null
 
-      // Verificar se existe cache válido
-      if (!forceRefresh) {
-        const cached = cache.get(key) as CacheEntry<T> | undefined
-        if (cached && Date.now() - cached.timestamp < ttl) {
-          setData(cached.data)
-          setLoading(false)
-          return cached.data
-        }
-      }
-
-      // Buscar dados novos
-      const freshData = await fetchFn()
-      
-      // Atualizar cache
-      cache.set(key, {
-        data: freshData,
-        timestamp: Date.now()
-      })
-
-      setData(freshData)
-      return freshData
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Unknown error'))
-      throw err
-    } finally {
-      setLoading(false)
+    if (Date.now() > item.timestamp + item.ttl) {
+      // Item expirado, remover do cache
+      this.cache.delete(key)
+      return null
     }
-  }, [key, fetchFn, ttl])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    return item.data
+  }
 
-  const refetch = useCallback(() => {
-    return fetchData(true)
-  }, [fetchData])
+  set<T>(key: string, data: T, ttl: number = 5 * 60 * 1000): void {
+    const item: CacheItem<T> = {
+      data,
+      timestamp: Date.now(),
+      ttl
+    }
+    this.cache.set(key, item)
+  }
 
-  const clearCache = useCallback(() => {
-    cache.delete(key)
-  }, [key])
+  clear(key?: string): void {
+    if (key) {
+      this.cache.delete(key)
+    } else {
+      this.cache.clear()
+    }
+  }
 
-  return {
-    data,
-    loading,
-    error,
-    refetch,
-    clearCache
+  has(key: string): boolean {
+    const item = this.cache.get(key)
+    if (!item) return false
+    return Date.now() <= item.timestamp + item.ttl
+  }
+
+  isExpired(key: string): boolean {
+    const item = this.cache.get(key)
+    if (!item) return true
+    return Date.now() > item.timestamp + item.ttl
   }
 }
 
-/**
- * Limpa todo o cache
- */
-export function clearAllCache() {
-  cache.clear()
-}
+// Instância global do cache
+export const cache = new GlobalCache()
 
-/**
- * Remove entradas antigas do cache
- * @param maxAge - Idade máxima em milissegundos
- */
-export function cleanCache(maxAge: number = 60 * 60 * 1000) {
-  const now = Date.now()
-  const keysToDelete: string[] = []
+export function useCache(): UseCacheReturn {
+  const [cache, setCache] = useState<Map<string, CacheItem<any>>>(new Map())
 
-  cache.forEach((entry, key) => {
-    if (now - entry.timestamp > maxAge) {
-      keysToDelete.push(key)
+  const get = useCallback(<T>(key: string): T | null => {
+    const item = cache.get(key)
+    if (!item) return null
+
+    if (Date.now() > item.timestamp + item.ttl) {
+      // Item expirado, remover do cache
+      setCache(prev => {
+        const newCache = new Map(prev)
+        newCache.delete(key)
+        return newCache
+      })
+      return null
     }
-  })
 
-  keysToDelete.forEach(key => cache.delete(key))
+    return item.data
+  }, [cache])
+
+  const set = useCallback(<T>(key: string, data: T, ttl: number = 5 * 60 * 1000) => { // 5 minutos por padrão
+    const item: CacheItem<T> = {
+      data,
+      timestamp: Date.now(),
+      ttl
+    }
+
+    setCache(prev => new Map(prev).set(key, item))
+  }, [])
+
+  const clear = useCallback((key?: string) => {
+    if (key) {
+      setCache(prev => {
+        const newCache = new Map(prev)
+        newCache.delete(key)
+        return newCache
+      })
+    } else {
+      setCache(new Map())
+    }
+  }, [])
+
+  const has = useCallback((key: string): boolean => {
+    return cache.has(key) && !isExpired(key)
+  }, [cache])
+
+  const isExpired = useCallback((key: string): boolean => {
+    const item = cache.get(key)
+    if (!item) return true
+    return Date.now() > item.timestamp + item.ttl
+  }, [cache])
+
+  return {
+    get,
+    set,
+    clear,
+    has,
+    isExpired
+  }
 }
-

@@ -7,6 +7,8 @@ import AdminSidebar from '@/components/AdminSidebar'
 import { VehicleService } from '@/services/vehicleService'
 import { ImageService } from '@/services/imageService'
 import { FuelType, TransmissionType } from '@/types/vehicle'
+import { VehicleImageUpload } from '@/components/VehicleImageUpload'
+import { SimpleImageCard } from '@/components/SimpleImageCard'
 import { toast } from 'sonner'
 import { 
   Car, 
@@ -48,10 +50,8 @@ export default function NovoVeiculo() {
     acceptsTrade: false,
     licensed: true,
     features: [] as string[],
-    images: [] as File[],
-    imagePreviews: [] as string[]
+    images: [] as File[]
   })
-  const [primaryImageIndex, setPrimaryImageIndex] = useState<number>(0)
 
   // Verificar autenticação
   useEffect(() => {
@@ -90,49 +90,6 @@ export default function NovoVeiculo() {
     }))
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files) {
-      const newFiles = Array.from(files)
-      const newPreviews = newFiles.map(file => URL.createObjectURL(file))
-      
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...newFiles],
-        imagePreviews: [...prev.imagePreviews, ...newPreviews]
-      }))
-      
-      // Se é a primeira imagem, definir como principal
-      if (formData.imagePreviews.length === 0) {
-        setPrimaryImageIndex(0)
-      }
-    }
-  }
-
-  const removeImage = (index: number) => {
-    setFormData(prev => {
-      // Revogar URL do preview para liberar memória
-      URL.revokeObjectURL(prev.imagePreviews[index])
-      
-      return {
-        ...prev,
-        images: prev.images.filter((_, i) => i !== index),
-        imagePreviews: prev.imagePreviews.filter((_, i) => i !== index)
-      }
-    })
-    
-    // Ajustar índice da imagem principal se necessário
-    if (primaryImageIndex >= index && primaryImageIndex > 0) {
-      setPrimaryImageIndex(prev => prev - 1)
-    } else if (primaryImageIndex === index && formData.imagePreviews.length > 1) {
-      setPrimaryImageIndex(0)
-    }
-  }
-
-  const setPrimaryImage = (index: number) => {
-    setPrimaryImageIndex(index)
-    toast.success('Imagem principal definida!')
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -217,6 +174,15 @@ export default function NovoVeiculo() {
       } catch (cleanupError) {
         console.error('Erro ao limpar imagens duplicadas:', cleanupError)
       }
+      
+      // Disparar evento para atualizar a lista de veículos
+      console.log('🚗 Veículo cadastrado com sucesso - disparando evento de atualização')
+      
+      // Disparar custom event para a mesma aba
+      window.dispatchEvent(new CustomEvent('vehicleAdded'))
+      
+      // Disparar evento para outras abas via localStorage
+      localStorage.setItem('vehicleAdded', 'true')
       
       // Redirecionar para a lista de veículos
       router.push('/admin/veiculos')
@@ -594,71 +560,19 @@ export default function NovoVeiculo() {
                   />
                 </div>
 
-                {/* Upload de Imagens */}
-                <div>
-                  <h3 className="text-lg font-semibold text-secondary-900 mb-4">Imagens</h3>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label htmlFor="image-upload" className="cursor-pointer">
-                      <Upload className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
-                      <p className="text-secondary-600">Clique para adicionar imagens</p>
-                      <p className="text-sm text-secondary-500">PNG, JPG até 10MB cada</p>
-                    </label>
-                  </div>
-
-                  {/* Preview das Imagens */}
-                  {formData.imagePreviews.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {formData.imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          
-                          {/* Botão de remover */}
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                          
-                          {/* Botão de estrela para imagem principal */}
-                          <button
-                            type="button"
-                            onClick={() => setPrimaryImage(index)}
-                            className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                              primaryImageIndex === index
-                                ? 'bg-yellow-500 text-white opacity-100'
-                                : 'bg-blue-500 text-white hover:bg-blue-600 opacity-0 group-hover:opacity-100'
-                            }`}
-                            title={primaryImageIndex === index ? "Imagem principal" : "Definir como imagem principal"}
-                          >
-                            <Star className={`w-4 h-4 ${primaryImageIndex === index ? 'fill-current' : ''}`} />
-                          </button>
-                          
-                          {/* Indicador de imagem principal */}
-                          <div className={`absolute bottom-1 left-1 text-white text-xs px-2 py-1 rounded-full transition-opacity ${
-                            primaryImageIndex === index
-                              ? 'bg-yellow-500 opacity-100'
-                              : 'bg-green-500 opacity-0 group-hover:opacity-100'
-                          }`}>
-                            {primaryImageIndex === index ? 'Imagem principal' : 'Clique na estrela para definir como principal'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                {/* Upload de Imagens SIMPLES */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-secondary-900">Imagens do Veículo</h3>
+                  <SimpleImageCard
+                    onImagesChange={(files) => {
+                      console.log('🖼️ Imagens alteradas:', files.length, 'arquivos')
+                      setFormData(prev => ({
+                        ...prev,
+                        images: files
+                      }))
+                    }}
+                    maxFiles={10}
+                  />
                 </div>
 
                 {/* Botões */}

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-client'
+import { cache } from '@/hooks/useCache'
 
 export class ImageService {
   // Upload de imagem para Supabase Storage
@@ -67,28 +68,52 @@ export class ImageService {
   
   // Upload múltiplo de imagens
   static async uploadMultipleImages(files: File[], vehicleId: string): Promise<string[]> {
-    console.log(`Iniciando upload de ${files.length} imagens para veículo ${vehicleId}`)
+    console.log(`🚀 Iniciando upload PARALELO de ${files.length} imagens para veículo ${vehicleId}`)
+    
+    try {
+      // Upload PARALELO - todas as imagens ao mesmo tempo
+      const uploadPromises = files.map(async (file, index) => {
+        console.log(`📤 Iniciando upload da imagem ${index + 1}/${files.length}`)
+        const url = await this.uploadImage(file, vehicleId, index === 0) // Primeira imagem é primária
+        console.log(`✅ Imagem ${index + 1} enviada com sucesso`)
+        return url
+      })
+      
+      // Aguardar todos os uploads terminarem
+      const uploadedUrls = await Promise.all(uploadPromises)
+      
+      console.log(`🎉 Upload PARALELO concluído: ${uploadedUrls.length}/${files.length} imagens enviadas`)
+      return uploadedUrls
+    } catch (error) {
+      console.error('❌ Erro no upload paralelo:', error)
+      // Fallback para upload sequencial se o paralelo falhar
+      console.log('🔄 Tentando upload sequencial como fallback...')
+      return await this.uploadMultipleImagesSequential(files, vehicleId)
+    }
+  }
+  
+  // Fallback: upload sequencial (método antigo)
+  static async uploadMultipleImagesSequential(files: File[], vehicleId: string): Promise<string[]> {
+    console.log(`Iniciando upload SEQUENCIAL de ${files.length} imagens para veículo ${vehicleId}`)
     const uploadedUrls: string[] = []
     
-    // Upload sequencial para evitar problemas de concorrência
     for (let i = 0; i < files.length; i++) {
       try {
         console.log(`Uploading imagem ${i + 1}/${files.length}`)
-        const url = await this.uploadImage(files[i], vehicleId, i === 0) // Primeira imagem é primária
+        const url = await this.uploadImage(files[i], vehicleId, i === 0)
         uploadedUrls.push(url)
         console.log(`Imagem ${i + 1} enviada com sucesso: ${url}`)
         
-        // Pequeno delay entre uploads para evitar problemas de concorrência
+        // Delay reduzido entre uploads
         if (i < files.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+          await new Promise(resolve => setTimeout(resolve, 100)) // Reduzido de 500ms para 100ms
         }
       } catch (error) {
         console.error(`Erro ao enviar imagem ${i + 1}:`, error)
-        // Continuar com as outras imagens mesmo se uma falhar
       }
     }
     
-    console.log(`Upload concluído: ${uploadedUrls.length}/${files.length} imagens enviadas`)
+    console.log(`Upload sequencial concluído: ${uploadedUrls.length}/${files.length} imagens enviadas`)
     return uploadedUrls
   }
   
@@ -96,16 +121,18 @@ export class ImageService {
   static async deleteImage(imageId: string): Promise<void> {
     const supabase = createClient()
     
-    // Buscar dados da imagem
+    // Buscar dados da imagem incluindo vehicle_id
     const { data: imageData, error: fetchError } = await supabase
       .from('vehicle_images')
-      .select('image_url')
+      .select('image_url, vehicle_id')
       .eq('id', imageId)
       .single()
     
     if (fetchError) {
       throw new Error(`Erro ao buscar dados da imagem: ${fetchError.message}`)
     }
+    
+    const vehicleId = imageData.vehicle_id
     
     // Extrair nome do arquivo da URL
     const url = new URL(imageData.image_url)
@@ -130,6 +157,12 @@ export class ImageService {
     if (dbError) {
       throw new Error(`Erro ao deletar referência da imagem: ${dbError.message}`)
     }
+    
+    // Limpar cache relacionado ao veículo
+    if (vehicleId) {
+      cache.clear(`vehicle-${vehicleId}`)
+      console.log('Cache do veículo limpo após deletar imagem')
+    }
   }
   
   // Deletar imagem por URL (para remoção na edição)
@@ -138,10 +171,10 @@ export class ImageService {
     
     console.log('Buscando imagem no banco:', imageUrl)
     
-    // Buscar dados da imagem por URL
+    // Buscar dados da imagem por URL incluindo vehicle_id
     const { data: imageData, error: fetchError } = await supabase
       .from('vehicle_images')
-      .select('id, image_url')
+      .select('id, image_url, vehicle_id')
       .eq('image_url', imageUrl)
     
     if (fetchError) {
@@ -159,7 +192,8 @@ export class ImageService {
     
     // Usar a primeira imagem encontrada (deve ser única por URL)
     const image = imageData[0]
-    console.log('Imagem encontrada com ID:', image.id)
+    const vehicleId = image.vehicle_id
+    console.log('Imagem encontrada com ID:', image.id, 'Vehicle ID:', vehicleId)
     
     // Extrair nome do arquivo da URL
     const url = new URL(image.image_url)
@@ -193,6 +227,12 @@ export class ImageService {
     }
     
     console.log('Referência removida do banco com sucesso')
+    
+    // Limpar cache relacionado ao veículo
+    if (vehicleId) {
+      cache.clear(`vehicle-${vehicleId}`)
+      console.log('Cache do veículo limpo após deletar imagem')
+    }
   }
   
   // Obter imagens de um veículo
@@ -231,6 +271,10 @@ export class ImageService {
     if (error) {
       throw new Error(`Erro ao definir imagem primária: ${error.message}`)
     }
+    
+    // Limpar cache relacionado ao veículo
+    cache.clear(`vehicle-${vehicleId}`)
+    console.log('Cache do veículo limpo após alterar imagem primária')
   }
 
   // Limpar imagens duplicadas

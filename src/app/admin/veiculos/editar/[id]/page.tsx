@@ -7,6 +7,7 @@ import AdminSidebar from '@/components/AdminSidebar'
 import { VehicleService } from '@/services/vehicleService'
 import { ImageService } from '@/services/imageService'
 import { FuelType, TransmissionType } from '@/types/vehicle'
+import { VehicleImageUpload } from '@/components/VehicleImageUpload'
 import { createClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import {
@@ -186,6 +187,16 @@ export default function EditarVeiculo() {
         existingImages: prev.existingImages.filter((_, i) => i !== index)
       }))
       
+      // Recarregar dados do veículo para garantir sincronização
+      const updatedVehicle = await VehicleService.getVehicleById(vehicleId)
+      if (updatedVehicle) {
+        setFormData(prev => ({
+          ...prev,
+          existingImages: updatedVehicle.images || []
+        }))
+        setPrimaryImageUrl(updatedVehicle.image || '')
+      }
+      
       console.log('Imagem removida com sucesso do banco e da interface')
       toast.success('Imagem removida com sucesso!')
     } catch (error) {
@@ -210,8 +221,15 @@ export default function EditarVeiculo() {
       
       await ImageService.setPrimaryImage(vehicleId, imageData[0].id)
       
-      // Atualizar estado local
-      setPrimaryImageUrl(imageUrl)
+      // Recarregar dados do veículo para garantir sincronização
+      const updatedVehicle = await VehicleService.getVehicleById(vehicleId)
+      if (updatedVehicle) {
+        setFormData(prev => ({
+          ...prev,
+          existingImages: updatedVehicle.images || []
+        }))
+        setPrimaryImageUrl(updatedVehicle.image || '')
+      }
       
       toast.success('Imagem principal definida com sucesso!')
     } catch (error) {
@@ -745,52 +763,16 @@ export default function EditarVeiculo() {
                   </div>
                 )}
 
-                {/* Upload de Novas Imagens */}
-                <div>
-                  <h3 className="text-lg font-semibold text-secondary-900 mb-4">Adicionar Novas Imagens</h3>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label htmlFor="image-upload" className="cursor-pointer">
-                      <Upload className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
-                      <p className="text-secondary-600">Clique para adicionar imagens</p>
-                      <p className="text-sm text-secondary-500">PNG, JPG até 10MB cada</p>
-                    </label>
-                  </div>
-
-                  {/* Preview das Novas Imagens */}
-                  {formData.imagePreviews.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {formData.imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                          {index === 0 && (
-                            <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                              Principal
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {/* Upload de Novas Imagens com Compressão Automática */}
+                <VehicleImageUpload
+                  onImagesChange={(files) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      images: files
+                    }))
+                  }}
+                  className="w-full"
+                />
 
                 {/* Botões */}
                 <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">

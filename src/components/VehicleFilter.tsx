@@ -61,14 +61,10 @@ export default function VehicleFilter({
   const handleInputChange = useCallback((field: keyof FilterState, value: string | string[]) => {
     const newFilters = { ...filters, [field]: value }
     setFilters(newFilters)
-    
+
+    // Aplicar filtros imediatamente (sem delay)
     if (onFilter) {
-      setIsLoading(true)
-      // Simular delay de API
-      setTimeout(() => {
-        onFilter(newFilters)
-        setIsLoading(false)
-      }, 200)
+      onFilter(newFilters)
     }
   }, [filters, onFilter])
 
@@ -123,12 +119,7 @@ export default function VehicleFilter({
   return (
     <div className="space-y-4">
       {/* Barra de Busca Principal */}
-      <motion.div
-        className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
         <div className="flex flex-col lg:flex-row gap-4 mb-4">
           {/* Busca */}
           <div className="flex-1 relative">
@@ -196,19 +187,13 @@ export default function VehicleFilter({
             )}
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Filtros Expandidos - apenas quando não é redirecionamento */}
       {!redirectOnSearch && (
         <AnimatePresence>
           {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 overflow-hidden"
-          >
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Marca */}
               <div>
@@ -326,7 +311,7 @@ export default function VehicleFilter({
                 <span>Limpar Todos os Filtros</span>
               </button>
             </div>
-          </motion.div>
+          </div>
           )}
         </AnimatePresence>
       )}

@@ -5,8 +5,11 @@ import VehicleInfo from '@/components/VehicleInfo'
 import ContactForm from '@/components/ContactForm'
 import Breadcrumb from '@/components/Breadcrumb'
 import RelatedVehicles from '@/components/RelatedVehicles'
+import VehicleDetailsSkeleton from '@/components/VehicleDetailsSkeleton'
+import ErrorPage from '@/components/ErrorPage'
 import { VehicleService } from '@/services/vehicleService'
 import { Vehicle, FuelType, TransmissionType } from '@/types'
+import { Suspense } from 'react'
 
 // Dados de exemplo - em produção viriam do Supabase
 const vehicleData: Vehicle = {
@@ -82,73 +85,52 @@ interface PageProps {
   }>
 }
 
-export default async function VehicleDetailsPage({ params }: PageProps) {
-  const { id } = await params
-  
+// Componente interno que carrega os dados
+async function VehicleDetailsContent({ id }: { id: string }) {
   console.log('🔍 Buscando veículo com ID:', id)
-  
+
   // Buscar veículo real do Supabase
   let vehicle: Vehicle | null
   try {
     vehicle = await VehicleService.getVehicleById(id)
     console.log('✅ Veículo encontrado:', vehicle)
-    
+
     if (!vehicle) {
       console.log('❌ Veículo não encontrado')
       return (
-        <div className="min-h-screen bg-gradient-to from-slate-50 via-white to-slate-100">
-          <Header />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Veículo não encontrado</h1>
-              <p className="text-gray-600 mb-8">O veículo que você está procurando não existe ou foi removido.</p>
-              <a 
-                href="/veiculos" 
-                className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                Ver todos os veículos
-              </a>
-            </div>
-          </main>
-          <Footer />
-        </div>
+        <ErrorPage
+          title="Veículo não encontrado"
+          message="O veículo que você está procurando não existe ou foi removido."
+          actionText="Ver todos os veículos"
+          actionHref="/veiculos"
+        />
       )
     }
-    
+
     // Debug: verificar se descrição e características estão presentes
     console.log('📝 Descrição:', vehicle.description)
     console.log('🔧 Características:', vehicle.features)
     console.log('⚙️ Especificações:', vehicle.specifications)
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar veículo:', error)
     return (
-      <div className="min-h-screen bg-gradient-to from-slate-50 via-white to-slate-100">
-        <Header />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Erro ao carregar veículo</h1>
-            <p className="text-gray-600 mb-8">Ocorreu um erro ao carregar as informações do veículo.</p>
-            <p className="text-sm text-red-600 mb-4">Erro: {error instanceof Error ? error.message : 'Erro desconhecido'}</p>
-            <a 
-              href="/veiculos" 
-              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Ver todos os veículos
-            </a>
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <ErrorPage
+        title="Erro ao carregar veículo"
+        message="Ocorreu um erro ao carregar as informações do veículo. Tente novamente em alguns instantes."
+        actionText="Ver todos os veículos"
+        actionHref="/veiculos"
+        onAction={() => window.location.reload()}
+      />
     )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to from-slate-50 via-white to-slate-100">
       <Header />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Breadcrumb 
+        <Breadcrumb
           items={[
             { label: 'Início', href: '/' },
             { label: 'Veículos', href: '/veiculos' },
@@ -179,7 +161,7 @@ export default async function VehicleDetailsPage({ params }: PageProps) {
                     Ou consulte financiamento
                   </p>
                 </div>
-                
+
                 <button className="w-full bg-linear-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center space-x-2">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
@@ -194,7 +176,7 @@ export default async function VehicleDetailsPage({ params }: PageProps) {
                   📞 Contato Direto
                 </h3>
                 <div className="space-y-3">
-                  <a 
+                  <a
                     href="https://wa.me/5555997121218?text=Olá! Gostaria de saber mais sobre este veículo."
                     target="_blank"
                     rel="noopener noreferrer"
@@ -210,8 +192,8 @@ export default async function VehicleDetailsPage({ params }: PageProps) {
                       <p className="text-xs text-gray-500">(55) 9 9712-1218</p>
                     </div>
                   </a>
-                  
-                  <a 
+
+                  <a
                     href="https://wa.me/5555996436044?text=Olá! Gostaria de saber mais sobre este veículo."
                     target="_blank"
                     rel="noopener noreferrer"
@@ -275,8 +257,18 @@ export default async function VehicleDetailsPage({ params }: PageProps) {
         {/* Veículos Relacionados */}
         <RelatedVehicles vehicleId={vehicle.id} />
       </main>
-      
+
       <Footer />
     </div>
+  )
+}
+
+export default async function VehicleDetailsPage({ params }: PageProps) {
+  const { id } = await params
+
+  return (
+    <Suspense fallback={<VehicleDetailsSkeleton />}>
+      <VehicleDetailsContent id={id} />
+    </Suspense>
   )
 }

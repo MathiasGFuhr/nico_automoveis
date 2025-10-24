@@ -20,7 +20,9 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 31536000, // 1 ano de cache
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
   // Compressão
@@ -58,6 +60,24 @@ const nextConfig: NextConfig = {
             value: 'public, max-age=31536000, immutable'
           }
         ]
+      },
+      {
+        source: '/_next/image/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable'
+          }
+        ]
+      },
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate'
+          }
+        ]
       }
     ]
   },
@@ -66,6 +86,14 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'framer-motion'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
 
   // Production optimizations
@@ -79,9 +107,33 @@ const nextConfig: NextConfig = {
         ...config.optimization,
         usedExports: true,
         sideEffects: false,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
+          },
+        },
       }
     }
-    
+
+    // Otimizações para desenvolvimento
+    if (dev && !isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+          },
+        },
+      }
+    }
+
     return config
   }
 };

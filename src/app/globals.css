@@ -96,6 +96,24 @@
     color: #d1d5db !important; /* gray-300 */
     opacity: 1;
   }
+
+  /* Forçar imagens de veículos a ocupar 100% do espaço - APENAS ROTA /VEICULOS */
+  .group .relative.overflow-hidden {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .group .relative.overflow-hidden img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-sizing: border-box !important;
+  }
 }
 
 @theme {

@@ -40,7 +40,7 @@ export default function AdminVeiculos() {
   const router = useRouter()
   
   // Buscar veículos do Supabase - SEMPRE NO TOPO, ANTES DE QUALQUER RETURN
-  const { vehicles: allVehicles, loading: vehiclesLoading, error: vehiclesError } = useVehicles()
+  const { vehicles: allVehicles, loading: vehiclesLoading, error: vehiclesError, invalidateCache } = useVehicles()
 
   // Verificar autenticação
   useEffect(() => {
@@ -55,6 +55,34 @@ export default function AdminVeiculos() {
     }
     checkAuth()
   }, [router])
+
+  // Listener para detectar novos veículos adicionados
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'vehicleAdded' && e.newValue === 'true') {
+        console.log('🚗 Novo veículo detectado - atualizando lista...')
+        invalidateCache()
+        // Limpar o flag
+        localStorage.removeItem('vehicleAdded')
+      }
+    }
+
+    // Listener para mudanças no localStorage
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Listener para mudanças na mesma aba (usando custom event)
+    const handleVehicleAdded = () => {
+      console.log('🚗 Novo veículo detectado (mesma aba) - atualizando lista...')
+      invalidateCache()
+    }
+    
+    window.addEventListener('vehicleAdded', handleVehicleAdded)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('vehicleAdded', handleVehicleAdded)
+    }
+  }, [invalidateCache])
 
   const handleLogout = () => {
     localStorage.removeItem('adminAuth')
@@ -277,13 +305,19 @@ export default function AdminVeiculos() {
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
               >
-                {/* Imagem */}
-                <div className="relative h-40 sm:h-48 bg-gray-100">
+                {/* Imagem - SEM MARGENS */}
+                <div className="relative h-40 sm:h-48 overflow-hidden vehicle-card">
                   {vehicle.image ? (
                     <img
                       src={vehicle.image}
                       alt={`${vehicle.brand} ${vehicle.model}`}
                       className="w-full h-full object-cover"
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover',
+                        display: 'block'
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200">
@@ -346,21 +380,21 @@ export default function AdminVeiculos() {
                       onClick={() => router.push(`/veiculos/${vehicle.id}`)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors text-sm font-medium border border-primary-200 hover:border-primary-300 min-h-[44px]"
                     >
-                      <Eye className="w-4 h-4 flex-shrink-0" />
+                      <Eye className="w-4 h-4 shrink-0" />
                       <span className="hidden md:inline">Ver</span>
                     </button>
                     <button 
                       onClick={() => router.push(`/admin/veiculos/editar/${vehicle.id}`)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium border border-blue-200 hover:border-blue-300 min-h-[44px]"
                     >
-                      <Edit className="w-4 h-4 flex-shrink-0" />
+                      <Edit className="w-4 h-4 shrink-0" />
                       <span className="hidden md:inline">Editar</span>
                     </button>
                     <button 
                       onClick={() => openDeleteModal(vehicle.id, `${vehicle.brand} ${vehicle.model}`)}
                       className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium border border-red-200 hover:border-red-300 min-h-[44px]"
                     >
-                      <Trash2 className="w-4 h-4 flex-shrink-0" />
+                      <Trash2 className="w-4 h-4 shrink-0" />
                       <span className="hidden md:inline">Excluir</span>
                     </button>
                   </div>

@@ -1,6 +1,48 @@
 import { createClient } from '@/lib/supabase-client'
 import { Vehicle, VehicleFilters, FuelType, TransmissionType } from '@/types/vehicle'
 
+// Cache simples em memória (em produção usar Redis)
+interface CacheItem<T> {
+  data: T
+  timestamp: number
+  ttl: number
+}
+
+class SimpleCache {
+  private cache = new Map<string, CacheItem<any>>()
+
+  get<T>(key: string): T | null {
+    const item = this.cache.get(key)
+    if (!item) return null
+
+    if (Date.now() > item.timestamp + item.ttl) {
+      this.cache.delete(key)
+      return null
+    }
+
+    return item.data
+  }
+
+  set<T>(key: string, data: T, ttl: number = 5 * 60 * 1000): void {
+    const item: CacheItem<T> = {
+      data,
+      timestamp: Date.now(),
+      ttl
+    }
+    this.cache.set(key, item)
+  }
+
+  clear(key?: string): void {
+    if (key) {
+      this.cache.delete(key)
+    } else {
+      this.cache.clear()
+    }
+  }
+}
+
+const cache = new SimpleCache()
+
 // Tipos específicos para dados do Supabase
 interface SupabaseBrand {
   name: string
@@ -56,8 +98,18 @@ interface SupabaseVehicle {
 const supabase = createClient()
 
 export class VehicleService {
-  // Buscar todos os veículos com filtros
+  // Buscar todos os veículos com filtros (COM CACHE)
   static async getVehicles(filters?: VehicleFilters) {
+    // Criar chave de cache baseada nos filtros
+    const cacheKey = `vehicles-${JSON.stringify(filters)}`
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<Vehicle[]>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - veículos retornados do cache')
+      return cachedData
+    }
+
     let query = supabase
       .from('vehicles')
       .select(`
@@ -106,7 +158,13 @@ export class VehicleService {
       throw new Error(`Erro ao buscar veículos: ${error.message}`)
     }
 
-    return this.transformVehicles(data || [])
+    const transformedData = this.transformVehicles(data || [])
+
+    // Salvar no cache por 5 minutos
+    cache.set(cacheKey, transformedData, 5 * 60 * 1000)
+
+    console.log('💾 Cache miss - veículos salvos no cache')
+    return transformedData
   }
 
   // Buscar apenas veículos disponíveis para venda
@@ -147,16 +205,25 @@ export class VehicleService {
 
     console.log('🔍 VehicleService.getAllVehicles - Dados brutos:', data?.length)
     console.log('🔍 VehicleService.getAllVehicles - Primeiro veículo:', data?.[0])
-    
+
     const transformed = this.transformVehicles(data || [])
     console.log('🔍 VehicleService.getAllVehicles - Dados transformados:', transformed.length)
     console.log('🔍 VehicleService.getAllVehicles - Primeiro veículo transformado:', transformed[0])
-    
+
     return transformed
   }
 
-  // Buscar veículo por ID
-  static async getVehicleById(id: string) {
+  // Buscar veículos relacionados (OTIMIZADO - Query específica com cache)
+  static async getRelatedVehicles(currentVehicleId: string, limit: number = 4) {
+    const cacheKey = `related-${currentVehicleId}-${limit}`
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<Vehicle[]>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - veículos relacionados retornados do cache')
+      return cachedData
+    }
+
     const { data, error } = await supabase
       .from('vehicles')
       .select(`
@@ -164,6 +231,44 @@ export class VehicleService {
         brands!inner(name),
         categories!inner(name),
         vehicle_images(image_url, alt_text, is_primary, sort_order)
+      `)
+      .neq('id', currentVehicleId)
+      .eq('status', 'available')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      throw new Error(`Erro ao buscar veículos relacionados: ${error.message}`)
+    }
+
+    const transformedData = this.transformVehicles(data || [])
+
+    // Salvar no cache por 10 minutos (mais tempo pois muda menos)
+    cache.set(cacheKey, transformedData, 10 * 60 * 1000)
+
+    console.log('💾 Cache miss - veículos relacionados salvos no cache')
+    return transformedData
+  }
+
+  // Buscar veículo por ID (OTIMIZADO - Uma consulta com JOIN e cache)
+  static async getVehicleById(id: string) {
+    const cacheKey = `vehicle-${id}`
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<Vehicle>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - veículo retornado do cache')
+      return cachedData
+    }
+
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select(`
+        *,
+        brands!inner(name),
+        categories!inner(name),
+        vehicle_images(image_url, alt_text, is_primary, sort_order),
+        vehicle_features(feature_name)
       `)
       .eq('id', id)
       .single()
@@ -177,25 +282,26 @@ export class VehicleService {
       return null
     }
 
-    // Buscar características separadamente
-    const { data: features } = await supabase
-      .from('vehicle_features')
-      .select('feature_name')
-      .eq('vehicle_id', id)
+    const transformedData = this.transformVehicle(data)
 
-    // Especificações removidas do projeto
+    // Salvar no cache por 15 minutos (veículos mudam pouco)
+    cache.set(cacheKey, transformedData, 15 * 60 * 1000)
 
-    // Adicionar dados buscados separadamente
-    const vehicleWithRelations = {
-      ...data,
-      vehicle_features: features || []
-    }
-
-    return this.transformVehicle(vehicleWithRelations)
+    console.log('💾 Cache miss - veículo salvo no cache')
+    return transformedData
   }
 
-  // Buscar marcas
+  // Buscar marcas (COM CACHE)
   static async getBrands() {
+    const cacheKey = 'brands'
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<any[]>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - marcas retornadas do cache')
+      return cachedData
+    }
+
     const { data, error } = await supabase
       .from('brands')
       .select('id, name')
@@ -205,11 +311,26 @@ export class VehicleService {
       throw new Error(`Erro ao buscar marcas: ${error.message}`)
     }
 
-    return data || []
+    const result = data || []
+
+    // Salvar no cache por 30 minutos (marcas mudam pouco)
+    cache.set(cacheKey, result, 30 * 60 * 1000)
+
+    console.log('💾 Cache miss - marcas salvas no cache')
+    return result
   }
 
-  // Buscar categorias
+  // Buscar categorias (COM CACHE)
   static async getCategories() {
+    const cacheKey = 'categories'
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<any[]>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - categorias retornadas do cache')
+      return cachedData
+    }
+
     const { data, error } = await supabase
       .from('categories')
       .select('id, name')
@@ -219,11 +340,26 @@ export class VehicleService {
       throw new Error(`Erro ao buscar categorias: ${error.message}`)
     }
 
-    return data || []
+    const result = data || []
+
+    // Salvar no cache por 30 minutos (categorias mudam pouco)
+    cache.set(cacheKey, result, 30 * 60 * 1000)
+
+    console.log('💾 Cache miss - categorias salvas no cache')
+    return result
   }
 
-  // Buscar tipos de combustível únicos
+  // Buscar tipos de combustível únicos (COM CACHE)
   static async getFuelTypes() {
+    const cacheKey = 'fuelTypes'
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<string[]>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - tipos de combustível retornados do cache')
+      return cachedData
+    }
+
     const { data, error } = await supabase
       .from('vehicles')
       .select('fuel_type')
@@ -234,11 +370,25 @@ export class VehicleService {
     }
 
     const uniqueFuelTypes = [...new Set(data?.map(v => v.fuel_type) || [])]
+
+    // Salvar no cache por 15 minutos (tipos mudam pouco)
+    cache.set(cacheKey, uniqueFuelTypes.sort(), 15 * 60 * 1000)
+
+    console.log('💾 Cache miss - tipos de combustível salvos no cache')
     return uniqueFuelTypes.sort()
   }
 
-  // Buscar tipos de transmissão únicos
+  // Buscar tipos de transmissão únicos (COM CACHE)
   static async getTransmissionTypes() {
+    const cacheKey = 'transmissionTypes'
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<string[]>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - tipos de transmissão retornados do cache')
+      return cachedData
+    }
+
     const { data, error } = await supabase
       .from('vehicles')
       .select('transmission')
@@ -249,11 +399,25 @@ export class VehicleService {
     }
 
     const uniqueTransmissions = [...new Set(data?.map(v => v.transmission) || [])]
+
+    // Salvar no cache por 15 minutos (tipos mudam pouco)
+    cache.set(cacheKey, uniqueTransmissions.sort(), 15 * 60 * 1000)
+
+    console.log('💾 Cache miss - tipos de transmissão salvos no cache')
     return uniqueTransmissions.sort()
   }
 
-  // Buscar cidades únicas
+  // Buscar cidades únicas (COM CACHE)
   static async getCities() {
+    const cacheKey = 'cities'
+
+    // Verificar cache primeiro
+    const cachedData = cache.get<string[]>(cacheKey)
+    if (cachedData) {
+      console.log('✅ Cache hit - cidades retornadas do cache')
+      return cachedData
+    }
+
     const { data, error } = await supabase
       .from('vehicles')
       .select('city, state')
@@ -264,6 +428,11 @@ export class VehicleService {
     }
 
     const uniqueCities = [...new Set(data?.map(v => `${v.city}, ${v.state}`) || [])]
+
+    // Salvar no cache por 15 minutos (cidades mudam pouco)
+    cache.set(cacheKey, uniqueCities.sort(), 15 * 60 * 1000)
+
+    console.log('💾 Cache miss - cidades salvas no cache')
     return uniqueCities.sort()
   }
 
@@ -318,10 +487,10 @@ export class VehicleService {
     }
   }
 
-  // Atualizar status do veículo
+  // Atualizar status do veículo (COM LIMPEZA DE CACHE)
   static async updateVehicleStatus(id: string, status: 'available' | 'reserved' | 'sold' | 'maintenance' | 'trade') {
     const supabase = createClient()
-    
+
     const { data, error } = await supabase
       .from('vehicles')
       .update({ status })
@@ -330,10 +499,20 @@ export class VehicleService {
       .single()
 
     if (error) throw error
+
+    // Limpar cache relacionado a este veículo e listagens
+    cache.clear(`vehicle-${id}`)
+    cache.clear() // Limpar todos os caches para garantir consistência
+
     return data
   }
 
-  // Adicionar novo veículo
+  // Método para limpar cache manualmente (útil para admin)
+  static clearCache(key?: string) {
+    cache.clear(key)
+  }
+
+  // Adicionar novo veículo (COM LIMPEZA DE CACHE)
   static async addVehicle(vehicleData: {
     model: string
     brand_id: string
@@ -355,7 +534,7 @@ export class VehicleService {
     featured: boolean
   }) {
     const supabase = createClient()
-    
+
     const { data, error } = await supabase
       .from('vehicles')
       .insert(vehicleData)
@@ -363,10 +542,14 @@ export class VehicleService {
       .single()
 
     if (error) throw error
+
+    // Limpar cache de listagens para incluir o novo veículo
+    cache.clear()
+
     return data
   }
 
-  // Substituir características (features) de um veículo
+  // Substituir características (features) de um veículo (COM LIMPEZA DE CACHE)
   static async upsertVehicleFeatures(vehicleId: string, features: string[]) {
     const supabase = createClient()
 
@@ -378,7 +561,12 @@ export class VehicleService {
 
     if (del.error) throw del.error
 
-    if (!features || features.length === 0) return true
+    if (!features || features.length === 0) {
+      // Limpar cache do veículo
+      cache.clear(`vehicle-${vehicleId}`)
+      cache.clear()
+      return true
+    }
 
     // Insere em lote
     const rows = features.map((feature) => ({
@@ -391,13 +579,49 @@ export class VehicleService {
       .insert(rows)
 
     if (ins.error) throw ins.error
+
+    // Limpar cache do veículo
+    cache.clear(`vehicle-${vehicleId}`)
+    cache.clear()
+
     return true
   }
 
-  // Deletar veículo
+  // Deletar veículo (COM LIMPEZA DE CACHE)
   static async deleteVehicle(id: string) {
     const supabase = createClient()
-    
+
+    // Buscar imagens do veículo antes de deletar para remover do storage
+    const { data: vehicleImages, error: fetchImagesError } = await supabase
+      .from('vehicle_images')
+      .select('image_url')
+      .eq('vehicle_id', id)
+
+    if (fetchImagesError) {
+      console.warn('Erro ao buscar imagens do veículo:', fetchImagesError)
+    }
+
+    // Remover arquivos do storage se existirem
+    if (vehicleImages && vehicleImages.length > 0) {
+      const filePaths = vehicleImages.map(img => {
+        const url = new URL(img.image_url)
+        const fileName = url.pathname.split('/').pop()
+        return `vehicle-images/${fileName}`
+      }).filter(Boolean)
+
+      if (filePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from('vehicle-images')
+          .remove(filePaths)
+
+        if (storageError) {
+          console.warn('Erro ao remover arquivos do storage:', storageError)
+        } else {
+          console.log(`${filePaths.length} arquivos removidos do storage`)
+        }
+      }
+    }
+
     // Remover vendas relacionadas que referenciam este veículo
     const deleteSales = await supabase
       .from('sales')
@@ -437,12 +661,16 @@ export class VehicleService {
       .eq('id', id)
 
     if (deleteVehicle.error) throw deleteVehicle.error
+
+    // Limpar cache relacionado a este veículo
+    cache.clear(`vehicle-${id}`)
+    cache.clear() // Limpar todos os caches para garantir consistência
   }
 
-  // Atualizar veículo
+  // Atualizar veículo (COM LIMPEZA DE CACHE)
   static async updateVehicle(id: string, vehicleData: Partial<SupabaseVehicle>) {
     const supabase = createClient()
-    
+
     const { data, error } = await supabase
       .from('vehicles')
       .update(vehicleData)
@@ -451,18 +679,23 @@ export class VehicleService {
       .single()
 
     if (error) throw error
+
+    // Limpar cache relacionado a este veículo
+    cache.clear(`vehicle-${id}`)
+    cache.clear() // Limpar todos os caches para garantir consistência
+
     return data
   }
 
 
-  // Criar veículo em troca
+  // Criar veículo em troca (COM LIMPEZA DE CACHE)
   static async createTradeVehicle(tradeData: {
     tradeVehicleName: string
     tradeValue: number
     clientId: string
   }) {
     const supabase = createClient()
-    
+
     // Criar um veículo básico em troca
     const vehicleData = {
       model: tradeData.tradeVehicleName,
@@ -492,6 +725,10 @@ export class VehicleService {
       .single()
 
     if (error) throw error
+
+    // Limpar cache de listagens para incluir o novo veículo
+    cache.clear()
+
     return data
   }
 }

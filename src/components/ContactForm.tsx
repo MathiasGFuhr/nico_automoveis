@@ -24,8 +24,8 @@ export default function ContactForm({ vehicleId, vehicleName }: ContactFormProps
 
   const onSubmit = async (data: ContactFormData) => {
     try {
-      // Simula uma chamada de API
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Simula uma chamada de API mais rápida
+      await new Promise((resolve) => setTimeout(resolve, 500))
       console.log('Formulário enviado:', data)
       toast.success('Mensagem enviada com sucesso!')
       reset({
