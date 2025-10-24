@@ -14,73 +14,44 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Função para otimizar URLs de imagem do Supabase Storage
-  const getOptimizedImageUrl = (
-    url: string,
-    size: 'thumb' | 'medium' | 'large' = 'medium',
-  ) => {
-    if (!url) return ''
-
-    // Se for URL do Supabase Storage, adicionar parâmetros de otimização
-    if (url.includes('supabase.co')) {
-      const baseUrl = url.split('?')[0]
-      const params = new URLSearchParams()
-
-      switch (size) {
-        case 'thumb':
-          params.set('width', '150')
-          params.set('height', '150')
-          params.set('resize', 'contain') // Mantido 'contain'
-          params.set('quality', '80')
-          break
-        case 'medium':
-          params.set('width', '800')
-          params.set('height', '600')
-          params.set('resize', 'contain') // Mantido 'contain'
-          params.set('quality', '85')
-          break
-        case 'large':
-          params.set('width', '1200')
-          params.set('height', '900')
-          params.set('resize', 'contain') // Mantido 'contain'
-          params.set('quality', '90')
-          break
-      }
-
-      return `${baseUrl}?${params.toString()}`
-    }
-
-    // Se for URL do Unsplash (fallback)
-    if (url.includes('unsplash.com')) {
-      const baseUrl = url.split('?')[0]
-      const params = new URLSearchParams()
-
-      switch (size) {
-        case 'thumb':
-          params.set('w', '150')
-          params.set('h', '150')
-          params.set('fit', 'crop')
-          params.set('q', '80')
-          break
-        case 'medium':
-          params.set('w', '800')
-          params.set('h', '600')
-          params.set('fit', 'crop')
-          params.set('q', '85')
-          break
-        case 'large':
-          params.set('w', '1200')
-          params.set('h', '900')
-          params.set('fit', 'crop') // Aqui deveria ser 'clip' ou 'fill' se quiser 'contain'
-          params.set('q', '90')
-          break
-      }
-
-      return `${baseUrl}?${params.toString()}`
-    }
-
-    return url
+  // --- !!! FIX DA TELA BRANCA !!! ---
+  // Se 'images' não existir ou for um array vazio, renderize um "placeholder"
+  // Isso evita erros antes que os dados da página carreguem.
+  if (!images || images.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="aspect-w-16 aspect-h-9 w-full h-[500px] bg-gray-200 flex items-center justify-center animate-pulse">
+          <p className="text-gray-500">Carregando imagens...</p>
+        </div>
+      </div>
+    )
   }
+  // --- FIM DO FIX ---
+
+  // --- OTIMIZAÇÃO DE IMAGEM (Já está correto) ---
+  // 'images' é o array original de URLs
+
+  // 1. URLs para a imagem principal (slider grande)
+  const mainImageUrls = images.map(
+    (url) => `${url}?width=1200&quality=85`,
+  )
+
+  // 2. URLs para as miniaturas (thumbnails da galeria)
+  const galleryThumbnailUrls = images.map(
+    (url) => `${url}?width=200&height=200&quality=75&resize=cover`,
+  )
+
+  // 3. URLs para o Modal (imagens grandes, HD)
+  const modalImageUrls = images.map(
+    (url) => `${url}?width=1920&quality=90`,
+  )
+
+  // 4. URLs para as miniaturas DO MODAL (pequenas, no rodapé do modal)
+  const modalThumbnailUrls = images.map(
+    (url) => `${url}?width=150&height=150&quality=75&resize=cover`,
+  )
+
+  // --- FIM DA OTIMIZAÇÃO ---
 
   const nextImage = () => {
     const nextIndex = (selectedImage + 1) % images.length
@@ -108,42 +79,25 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Imagem Principal Premium (Estrutura Corrigida) */}
-        {/* Este é o contêiner principal. 
-          - 'relative' ancora todos os botões e overlays.
-          - 'group' é para efeitos de hover (como no overlay).
-          - 'aspect-[4/3]' força a proporção correta (1200x900).
-          - 'bg-gray-100' é o fundo que estava aparecendo nas bordas.
-        */}
-         <div className="relative group aspect-4/3 bg-gray-100 overflow-hidden">
-           {/* Imagem Principal - Preenchendo completamente o card */}
-           <motion.div
-             key={selectedImage}
-             initial={{ opacity: 0, scale: 1.05 }}
-             animate={{ opacity: 1, scale: 1 }}
-             exit={{ opacity: 0, scale: 0.95 }}
-             transition={{ 
-               duration: 0.4, 
-               ease: [0.4, 0.0, 0.2, 1] 
-             }}
-             className="w-full h-full"
-           >
-             <Image
-               src={getOptimizedImageUrl(images[selectedImage], 'large')}
-               alt="Veículo"
-               width={1200}
-               height={900}
-               className="w-full h-full object-cover cursor-pointer transition-transform duration-300 group-hover:scale-105"
-               onClick={openModal}
-               onLoad={() => {
-                 // Imagem carregada com sucesso
-                 console.log('Imagem principal carregada:', selectedImage + 1)
-               }}
-               onError={() => {
-                 console.error('Erro ao carregar imagem principal')
-               }}
-             />
-           </motion.div>
+        {/* Imagem Principal Premium */}
+        <div className="relative group">
+          <div className="aspect-w-16 aspect-h-9 overflow-hidden">
+            <Image
+              src={mainImageUrls[selectedImage]}
+              alt="Veículo"
+              width={1200}
+              height={500}
+              className="w-full h-[500px] object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
+              onClick={openModal}
+            />
+            {/* Overlay Gradiente */}
+            <motion.div
+              className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent"
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
 
           {/* Overlay Gradiente (Agora posicionado corretamente) */}
           <motion.div
@@ -186,14 +140,15 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
             <ChevronRight className="w-5 h-5" />
           </motion.button>
 
-          {/* Indicador de Posição com transição suave */}
+          {/* Indicador de Posição Premium */}
           <motion.div
             className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm text-gray-800 px-4 py-2 rounded-full text-sm font-medium shadow-lg"
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{
-              duration: 0.3,
+              duration: 0.25,
               ease: [0.4, 0.0, 0.2, 1],
+              delay: 0.1,
             }}
             key={`indicator-${selectedImage}`}
           >
@@ -235,9 +190,9 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
             </div>
           </div>
 
-          {/* Grid responsivo com lazy loading para miniaturas */}
+          {/* Grid responsivo para mostrar todas as miniaturas */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-            {images.map((image, index) => (
+            {galleryThumbnailUrls.map((image, index) => (
               <motion.button
                 key={index}
                 onClick={() => {
@@ -263,12 +218,12 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
                   className="w-full h-full"
                   whileHover={{ scale: 1.1 }}
                   transition={{
-                    duration: 0.2,
-                    ease: [0.4, 0.0, 0.2, 1],
+                    duration: 0.15,
+                    ease: [0.25, 0.1, 0.25, 1],
                   }}
                 >
                   <Image
-                    src={getOptimizedImageUrl(image, 'thumb')}
+                    src={image}
                     alt={`Imagem ${index + 1}`}
                     width={150}
                     height={150}
@@ -300,7 +255,7 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
           {images.length > 12 && (
             <div className="mt-4">
               <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
-                {images.map((image, index) => (
+                {galleryThumbnailUrls.map((image, index) => (
                   <motion.button
                     key={`scroll-${index}`}
                     onClick={() => setSelectedImage(index)}
@@ -327,13 +282,16 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
         </div>
       </motion.div>
 
-      {/* Modal de Imagem */}
-      <ImageModal
-        images={images}
-        currentIndex={selectedImage}
-        isOpen={isModalOpen}
-        onClose={closeModal}
-      />
+      {/* --- O "Lazy Loading" do Modal (Já está correto) --- */}
+      {isModalOpen && (
+        <ImageModal
+          images={modalImageUrls}
+          thumbnails={modalThumbnailUrls}
+          currentIndex={selectedImage}
+          isOpen={isModalOpen}
+          onClose={closeModal}
+        />
+      )}
     </>
   )
 }

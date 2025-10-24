@@ -1,13 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from 'lucide-react'
 import Image from 'next/image'
 
 import { ImageModalProps } from '@/types'
 
-export default function ImageModal({ images, currentIndex, isOpen, onClose }: ImageModalProps) {
+export default function ImageModal({
+  images,
+  currentIndex,
+  isOpen,
+  onClose,
+}: ImageModalProps) {
   const [activeIndex, setActiveIndex] = useState(currentIndex)
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set([currentIndex]))
   const [zoom, setZoom] = useState(1)
@@ -66,9 +71,35 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
     return url
   }
 
+  // --- OTIMIZAÇÃO APLICADA DENTRO DO MODAL ---
+  // 'images' são as URLs grandes (ex: width=1920).
+  // Vamos criar URLs de miniatura APENAS para o rodapé do modal.
+  // Adicionamos parâmetros que sobrescrevem os originais da prop.
+  // Nota: Usamos '&' para adicionar parâmetros, pois a URL base já tem '?'.
+  const modalThumbnailUrls = images.map(
+    (url) => `${url}&width=150&height=150&quality=75&resize=cover`,
+  )
+  // --- FIM DA OTIMIZAÇÃO ---
+
   useEffect(() => {
     setActiveIndex(currentIndex)
   }, [currentIndex])
+
+  const nextImage = useCallback(() => {
+    const nextIndex = (activeIndex + 1) % images.length
+    setActiveIndex(nextIndex)
+    setLoadedImages(prev => new Set([...prev, nextIndex]))
+    setZoom(1)
+    setRotation(0)
+  }, [activeIndex, images.length])
+
+  const prevImage = useCallback(() => {
+    const prevIndex = (activeIndex - 1 + images.length) % images.length
+    setActiveIndex(prevIndex)
+    setLoadedImages(prev => new Set([...prev, prevIndex]))
+    setZoom(1)
+    setRotation(0)
+  }, [activeIndex, images.length])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -98,23 +129,7 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen])
-
-  const nextImage = () => {
-    const nextIndex = (activeIndex + 1) % images.length
-    setActiveIndex(nextIndex)
-    setLoadedImages(prev => new Set([...prev, nextIndex]))
-    setZoom(1)
-    setRotation(0)
-  }
-
-  const prevImage = () => {
-    const prevIndex = (activeIndex - 1 + images.length) % images.length
-    setActiveIndex(prevIndex)
-    setLoadedImages(prev => new Set([...prev, prevIndex]))
-    setZoom(1)
-    setRotation(0)
-  }
+  }, [isOpen, onClose, nextImage, prevImage])
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.5, 3))
@@ -147,7 +162,7 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
         transition={{ duration: 0.3 }}
       >
         {/* Header com controles */}
-        <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-4">
+        <div className="absolute top-0 left-0 right-0 z-20 bg-linear-to-b from-black/80 to-transparent p-4">
           <div className="flex items-center justify-between">
             {/* Indicador de posição */}
             <div className="bg-white/10 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium">
