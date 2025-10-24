@@ -13,24 +13,41 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // --- OTIMIZAÇÃO DE IMAGEM APLICADA AQUI ---
+  // --- !!! FIX DA TELA BRANCA !!! ---
+  // Se 'images' não existir ou for um array vazio, renderize um "placeholder"
+  // Isso evita erros antes que os dados da página carreguem.
+  if (!images || images.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="aspect-w-16 aspect-h-9 w-full h-[500px] bg-gray-200 flex items-center justify-center animate-pulse">
+          <p className="text-gray-500">Carregando imagens...</p>
+        </div>
+      </div>
+    )
+  }
+  // --- FIM DO FIX ---
+
+  // --- OTIMIZAÇÃO DE IMAGEM (Já está correto) ---
+  // 'images' é o array original de URLs
 
   // 1. URLs para a imagem principal (slider grande)
-  // Pedimos uma versão de alta qualidade, mas otimizada para web (max 1200px)
   const mainImageUrls = images.map(
     (url) => `${url}?width=1200&quality=85`,
   )
 
-  // 2. URLs para as miniaturas (thumbnails)
-  // Pedimos versões pequenas e quadradas, com qualidade menor (75%)
-  const thumbnailUrls = images.map(
+  // 2. URLs para as miniaturas (thumbnails da galeria)
+  const galleryThumbnailUrls = images.map(
     (url) => `${url}?width=200&height=200&quality=75&resize=cover`,
   )
 
-  // 3. URLs para o Modal (quando o usuário clica para expandir)
-  // Pedimos uma versão de alta definição (HD), mas ainda otimizada.
+  // 3. URLs para o Modal (imagens grandes, HD)
   const modalImageUrls = images.map(
     (url) => `${url}?width=1920&quality=90`,
+  )
+
+  // 4. URLs para as miniaturas DO MODAL (pequenas, no rodapé do modal)
+  const modalThumbnailUrls = images.map(
+    (url) => `${url}?width=150&height=150&quality=75&resize=cover`,
   )
 
   // --- FIM DA OTIMIZAÇÃO ---
@@ -63,7 +80,6 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
         <div className="relative group">
           <div className="aspect-w-16 aspect-h-9 overflow-hidden">
             <img
-              // <-- MUDANÇA AQUI: Usando a URL otimizada
               src={mainImageUrls[selectedImage]}
               alt="Veículo"
               className="w-full h-[500px] object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
@@ -152,8 +168,7 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
 
           {/* Grid responsivo para mostrar todas as miniaturas */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-            {/* <-- MUDANÇA AQUI: Usando as URLs de miniatura */}
-            {thumbnailUrls.map((image, index) => (
+            {galleryThumbnailUrls.map((image, index) => (
               <motion.button
                 key={index}
                 onClick={() => setSelectedImage(index)}
@@ -173,7 +188,6 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
                 }}
               >
                 <motion.img
-                  // <-- MUDANÇA AQUI: `image` agora é a URL da miniatura
                   src={image}
                   alt={`Imagem ${index + 1}`}
                   className="w-full h-full object-cover"
@@ -203,19 +217,37 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
           {/* Se houver muitas imagens, mostrar scroll horizontal como fallback */}
           {images.length > 12 && (
             <div className="mt-4">
-              {/* ... (código do scroll horizontal) ... */}
+              <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
+                {galleryThumbnailUrls.map((image, index) => (
+                  <motion.button
+                    key={`scroll-${index}`}
+                    onClick={() => setSelectedImage(index)}
+                    className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
+                      selectedImage === index
+                        ? 'border-primary-600 ring-2 ring-primary-100'
+                        : 'border-gray-200 hover:border-primary-300'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <img
+                      src={image}
+                      alt={`Imagem ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </motion.button>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </motion.div>
 
-      {/* --- MUDANÇA CRÍTICA AQUI --- */}
-      {/* Agora o Modal só será renderizado (e suas imagens carregadas) 
-        QUANDO o 'isModalOpen' for 'true'. Isso é o que vai destravar a página.
-      */}
+      {/* --- O "Lazy Loading" do Modal (Já está correto) --- */}
       {isModalOpen && (
         <ImageModal
           images={modalImageUrls}
+          thumbnails={modalThumbnailUrls}
           currentIndex={selectedImage}
           isOpen={isModalOpen}
           onClose={closeModal}

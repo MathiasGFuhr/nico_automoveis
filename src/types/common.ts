@@ -51,6 +51,7 @@ export interface ModalProps {
 
 export interface ImageModalProps extends ModalProps {
   images: string[]
+  thumbnails: string[] // <-- ESTA É A CORREÇÃO QUE FALTAVA
   currentIndex: number
 }
 
