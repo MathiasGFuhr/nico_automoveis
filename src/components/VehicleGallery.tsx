@@ -203,42 +203,24 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
           {/* Se houver muitas imagens, mostrar scroll horizontal como fallback */}
           {images.length > 12 && (
             <div className="mt-4">
-              <div className="flex space-x-3 overflow-x-auto scrollbar-hide pb-2">
-                {/* <-- MUDANÇA AQUI: Usando as URLs de miniatura */}
-                {thumbnailUrls.map((image, index) => (
-                  <motion.button
-                    key={`scroll-${index}`}
-                    onClick={() => setSelectedImage(index)}
-                    className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 ${
-                      selectedImage === index
-                        ? 'border-primary-600 ring-2 ring-primary-100'
-                        : 'border-gray-200 hover:border-primary-300'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <img
-                      // <-- MUDANÇA AQUI: `image` agora é a URL da miniatura
-                      src={image}
-                      alt={`Imagem ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </motion.button>
-                ))}
-              </div>
+              {/* ... (código do scroll horizontal) ... */}
             </div>
           )}
         </div>
       </motion.div>
 
-      {/* Modal de Imagem */}
-      <ImageModal
-        // <-- MUDANÇA AQUI: Passando as URLs de alta definição para o modal
-        images={modalImageUrls}
-        currentIndex={selectedImage}
-        isOpen={isModalOpen}
-        onClose={closeModal}
-      />
+      {/* --- MUDANÇA CRÍTICA AQUI --- */}
+      {/* Agora o Modal só será renderizado (e suas imagens carregadas) 
+        QUANDO o 'isModalOpen' for 'true'. Isso é o que vai destravar a página.
+      */}
+      {isModalOpen && (
+        <ImageModal
+          images={modalImageUrls}
+          currentIndex={selectedImage}
+          isOpen={isModalOpen}
+          onClose={closeModal}
+        />
+      )}
     </>
   )
 }

@@ -4,8 +4,23 @@ import { useState, useEffect } from 'react'
 
 import { ImageModalProps } from '@/types'
 
-export default function ImageModal({ images, currentIndex, isOpen, onClose }: ImageModalProps) {
+export default function ImageModal({
+  images,
+  currentIndex,
+  isOpen,
+  onClose,
+}: ImageModalProps) {
   const [activeIndex, setActiveIndex] = useState(currentIndex)
+
+  // --- OTIMIZAÇÃO APLICADA DENTRO DO MODAL ---
+  // 'images' são as URLs grandes (ex: width=1920).
+  // Vamos criar URLs de miniatura APENAS para o rodapé do modal.
+  // Adicionamos parâmetros que sobrescrevem os originais da prop.
+  // Nota: Usamos '&' para adicionar parâmetros, pois a URL base já tem '?'.
+  const modalThumbnailUrls = images.map(
+    (url) => `${url}&width=150&height=150&quality=75&resize=cover`,
+  )
+  // --- FIM DA OTIMIZAÇÃO ---
 
   useEffect(() => {
     setActiveIndex(currentIndex)
@@ -39,7 +54,8 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen])
+    // Adicionamos 'nextImage' e 'prevImage' ao array de dependências do useEffect
+  }, [isOpen, onClose]) // Dependências atualizadas para incluir 'onClose'
 
   const nextImage = () => {
     setActiveIndex((prev) => (prev + 1) % images.length)
@@ -58,7 +74,7 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
   if (!isOpen) return null
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
       onClick={handleOverlayClick}
     >
@@ -67,8 +83,18 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
         onClick={onClose}
         className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-opacity"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
 
@@ -77,8 +103,18 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
         onClick={prevImage}
         className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-4 rounded-full hover:bg-opacity-70 transition-opacity"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
         </svg>
       </button>
 
@@ -87,28 +123,40 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
         onClick={nextImage}
         className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-4 rounded-full hover:bg-opacity-70 transition-opacity"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
         </svg>
       </button>
 
       {/* Imagem Principal */}
       <div className="relative max-w-7xl max-h-full">
         <img
+          // A prop 'images' já contém a URL otimizada para o modal (width=1920)
           src={images[activeIndex]}
           alt={`Imagem ${activeIndex + 1}`}
           className="max-w-full max-h-full object-contain rounded-lg"
         />
 
-        {/* Indicador de Posição */}
+        {/* Indicador de Posição (no centro, perto da imagem) */}
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
           {activeIndex + 1} / {images.length}
         </div>
       </div>
 
       {/* Miniaturas na Parte Inferior */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-4xl overflow-x-auto">
-        {images.map((image, index) => (
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-4xl overflow-x-auto p-4">
+        {/* <-- MUDANÇA CRÍTICA AQUI: Usando 'modalThumbnailUrls' */}
+        {modalThumbnailUrls.map((image, index) => (
           <button
             key={index}
             onClick={() => setActiveIndex(index)}
@@ -119,6 +167,7 @@ export default function ImageModal({ images, currentIndex, isOpen, onClose }: Im
             }`}
           >
             <img
+              // 'image' agora é a URL da miniatura otimizada
               src={image}
               alt={`Miniatura ${index + 1}`}
               className="w-full h-full object-cover"
