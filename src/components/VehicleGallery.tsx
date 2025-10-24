@@ -64,6 +64,7 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
   }
 
   const openModal = () => {
+    console.log('🖼️ Abrindo modal de imagem...')
     setIsModalOpen(true)
   }
 
@@ -87,16 +88,28 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
               alt="Veículo"
               width={1200}
               height={500}
-              className="w-full h-[500px] object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
+              className="w-full h-[500px] object-cover cursor-pointer transition-all duration-300 hover:scale-105 hover:brightness-110"
               onClick={openModal}
             />
-            {/* Overlay Gradiente */}
+            {/* Overlay Gradiente com indicador */}
             <motion.div
               className="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent"
               initial={{ opacity: 0 }}
               whileHover={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             />
+            
+            {/* Indicador de clique */}
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="bg-white/90 backdrop-blur-sm text-gray-800 px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                Clique para expandir
+              </div>
+            </motion.div>
           </div>
 
           {/* Overlay Gradiente (Agora posicionado corretamente) */}
@@ -168,11 +181,12 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
           {/* Botão de Expandir (Agora posicionado corretamente) */}
           <motion.button
             onClick={openModal}
-            className="absolute top-6 right-6 bg-white/90 backdrop-blur-sm text-gray-800 p-3 rounded-full shadow-lg"
-            initial={{ opacity: 0, scale: 0 }}
-            whileHover={{ opacity: 1, scale: 1.1 }}
+            className="absolute top-6 right-6 bg-white/90 backdrop-blur-sm text-gray-800 p-3 rounded-full shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300 z-10"
+            initial={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(255, 255, 255, 1)' }}
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.3 }}
+            title="Abrir em tela cheia"
           >
             <Expand className="w-5 h-5" />
           </motion.button>
@@ -284,13 +298,16 @@ export default function VehicleGallery({ images }: VehicleGalleryProps) {
 
       {/* --- O "Lazy Loading" do Modal (Já está correto) --- */}
       {isModalOpen && (
-        <ImageModal
-          images={modalImageUrls}
-          thumbnails={modalThumbnailUrls}
-          currentIndex={selectedImage}
-          isOpen={isModalOpen}
-          onClose={closeModal}
-        />
+        <>
+          {console.log('🎯 Renderizando ImageModal com', modalImageUrls.length, 'imagens')}
+          <ImageModal
+            images={modalImageUrls}
+            thumbnails={modalThumbnailUrls}
+            currentIndex={selectedImage}
+            isOpen={isModalOpen}
+            onClose={closeModal}
+          />
+        </>
       )}
     </>
   )
